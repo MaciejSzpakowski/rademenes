@@ -39,3 +39,5 @@
 
 # debug information files
 *.dwo
+/.vs/pharaoh
+/pharaoh/x64/Debug
