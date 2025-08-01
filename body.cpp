@@ -41,6 +41,12 @@ namespace ph
 				b->water[0] = b->water[1];
 			}
 			break;
+		case bodyType::fire:
+			if (b && b->flamable)
+			{
+				b->fire[0] = b->fire[1];
+			}
+			break;
 		}
 	}
 
@@ -60,7 +66,7 @@ namespace ph
 	uint initSprite(int x, int y, float r, float g, float b)
 	{
 		float color[3] = { r,g,b };
-		return gl::addSprite(color, x, y, 0.3f, 0.8f, 0.8f);
+		return gl::addSprite(color, x, y, 0.3f, 0.5f, 0.5f);
 	}
 
 	void body::init()

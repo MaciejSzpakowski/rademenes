@@ -229,7 +229,7 @@ namespace ph
 
 			if (!b->live || b->dir[0] == 0 && b->dir[1] == 0) continue;
 
-			gl::updateSprite(b->sprite, b->x + b->dir[0] * tickProgress, b->y + b->dir[1] * tickProgress);
+			gl::updateSprite(b->sprite, b->x + b->dir[0] * tickProgress + 0.15f, b->y + b->dir[1] * tickProgress + 0.15f);
 		}
 	}
 
