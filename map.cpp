@@ -32,7 +32,7 @@ namespace ph
 			for (int j = y; j < y + h; j++)
 			{
 				bool outOfBounds = !(i >= 0 && i < GRID_SIZE && j >= 0 && j < GRID_SIZE);
-				cell* c = !outOfBounds ? &grid[i][j] : nullptr;
+				cell* c = !outOfBounds ? &this->grid[i][j] : nullptr;
 				if (!it(c, i, j, data)) return;
 			}
 		}
@@ -122,7 +122,7 @@ namespace ph
 	void smap::addRoad(int x, int y)
 	{
 		cell* c = at(x, y);
-		if (!c || c->b || c->road) return;
+		if (!c || c->b || c->road || c->type != cellType::empty) return;
 		c->road = true;
 		float color[3] = { 1,1,1 };
 		c->roadSpriteIndex = gl::addSprite(color, x, y, 0.85f, 1, 1);
@@ -164,6 +164,40 @@ namespace ph
 		return nullptr;
 	}
 
+	struct fillMoistureCallbackStruct
+	{
+		cell* c;
+		int i;
+	};
+
+	bool fillMoistureCallback(cell* c, int x, int y, fillMoistureCallbackStruct* callbackResult)
+	{
+		// TODO need to make it faster
+		if (c && !c->moisture)
+		{
+			c->moisture = true;
+			float col[] = { 0.75f,0.75f,1 };
+			gl::addSprite(col, x, y, 0.99f, 1, 1);
+		}
+
+		return true;
+	}
+
+	void smap::fillMoisture()
+	{
+		for (uint i = 0; i < GRID_SIZE; i++)
+		{
+			for (uint j = 0; j < GRID_SIZE; j++)
+			{
+				if (grid[i][j].type == cellType::water)
+				{
+					fillMoistureCallbackStruct callbackResult = { &grid[i][j], 0 };
+					getArea(i - 6, j - 6, 13, 13, (CELLIT)fillMoistureCallback, &callbackResult);
+				}
+			}
+		}
+	}
+
 	void smap::init()
 	{
 		this->id = 0;
@@ -174,6 +208,7 @@ namespace ph
 		this->entrance = nullptr;
 		this->GRID_SIZE = 50;
 		this->HALF = 25;
+		this->deben = 5000;
 
 		for (uint i = 0; i < MAX_BUILDINGS; i++)
 		{
@@ -192,8 +227,26 @@ namespace ph
 				grid[i][j] = {};
 				grid[i][j].spriteIndex = -1;
 				grid[i][j].roadSpriteIndex = -1;
+				grid[i][j].type = cellType::empty;
 			}
 		}
+
+		// mock deserialize
+		float waterc[] = { 0,0,0.5f };
+
+		for (uint i = 0; i < 10; i++)
+		{
+			for (uint j = 0; j < 10; j++)
+			{
+				grid[i][j].type = cellType::water;
+				gl::addSprite(waterc, i, j, 0.99f, 1, 1);
+			}
+		}
+
+		grid[25][25].type = cellType::water;
+		gl::addSprite(waterc, 25, 25, 0.99f, 1, 1);
+
+		this->fillMoisture();
 
 		//deserialize();
 	}
@@ -281,7 +334,7 @@ namespace ph
 	void smap::deserialize()
 	{
 		stream s;
-		if (!s.openReadFileStream("map.dat"))
+		if (!s.openReadFileStream("./maps/map.dat"))
 			return;
 
 		this->id = s.readUint64();

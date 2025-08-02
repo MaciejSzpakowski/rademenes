@@ -15,6 +15,8 @@ namespace ph
 	void game::init()
 	{
 		tickLength = 0.25f;
+		map.init();
+		builder::init();
 	}
 
 	void game::run()
@@ -34,15 +36,16 @@ namespace ph
 		sprintf(it, "cit %3d|", map.citizens); it += 8;
 		sprintf(it, "emp %3d|", map.employees); it += 8;
 		sprintf(it, "emd %3d|", map.employeed); it += 8;
-		sprintf(it, "unm %3d ", map.unemployed); it += 8;
+		sprintf(it, "unm %3d|", map.unemployed); it += 8;
+		sprintf(it, "db %3d|", map.deben); it += 7;
 		sprintf(it, "\n"); it += 1;
 
 		if (hover && hover->b)
 		{
 			building* b = hover->b;
-			sprintf(it, "door %d %d empcnt %d occ %d reccnt %d rec %d wrkcnt %d wrk %d wtr %d fir %d",
+			sprintf(it, "door %d %d empcnt %d occ %d reccnt %d rec %d wrkcnt %d wrk %d wtr %d fir %d col %d",
 				b->door[0], b->door[1], b->employementCounter, b->occupants, b->recruiterCounter,
-				b->recruiters, b->workerCounter, b->workers, b->water[0], b->fire[0]);
+				b->recruiters, b->workerCounter, b->workers, b->water[0], b->fire[0], b->collapse[0]);
 		}
 		else
 		{
@@ -62,6 +65,8 @@ namespace ph
 
 	void game::keyboard()
 	{
+		builder::keyboard();
+
 		if (gl::isKeyPressed(1))
 		{
 			ph::builder::leftClickCallback();

@@ -6,4 +6,6 @@ namespace ph::builder
 	void rightClickCallback();
 	void select(int delta);
 	const char* getDesc();
+	void keyboard();
+	void init();
 }

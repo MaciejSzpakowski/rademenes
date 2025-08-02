@@ -2,7 +2,7 @@
 #include "viva_impl.h"
 #include "types.h"
 #include <cmath>
-#define MAX_SPRITE 1000
+#define MAX_SPRITE 10000
 
 namespace ph
 {
@@ -29,7 +29,7 @@ namespace ph::gl
     float lasttext2update;
     vi::input::mouse mouse;
     vi::input::keyboard keyboard;
-    vi::util::rng rng;
+    vi::util::rng rng{ 1,1000 };
     vi::gl::camera worldView;
     int GRID_SPRITE_COUNT;
     ID3D11VertexShader* diagonalVS;
@@ -55,6 +55,13 @@ namespace ph::gl
         if (!cnd) error(str);
     }
 
+    int rand(int min, int max)
+    {
+        // TODO
+        // fix this later to have multiple distributions
+        return rng.rnd() % (max - min) + min;
+    }
+
     void clearSprites()
     {
         for (uint i = 0; i < MAX_SPRITE; i++)
@@ -69,7 +76,6 @@ namespace ph::gl
             {
                 sp[i].s1.nodraw = false;
                 sp[i].init(nullptr);
-                sp[i].s1.notexture = 1;
                 sp[i].s2.col = { color[0],color[1],color[2],1 };
                 sp[i].s1.x = x;
                 sp[i].s1.y = y;
@@ -81,7 +87,7 @@ namespace ph::gl
             }
         }
 
-        error(__FUNCTION__ ". No more slots.\n");
+        massert(true, "sprite pool exausted");
     }
 
     uint addSprite(spriteType type, float x, float y, float z, float w, float h)
@@ -89,17 +95,18 @@ namespace ph::gl
         const float unitw = 1.0f / 16.0f;
         const float unith = 0.5f;        
 
-        for (uint i = 0; i < 1000; i++)
+        for (uint i = 0; i < MAX_SPRITE; i++)
         {
             if (sp[i].s1.nodraw)
             {
                 sp[i].s1.nodraw = false;
                 sp[i].init(&envTextures);
-                sp[i].s1.x = x * cos - y * sin + sqrtf2 / 2;
-                sp[i].s1.y = x * sin + y * cos;
+                sp[i].s1.x = x;
+                sp[i].s1.y = y;
                 sp[i].s1.z = z;
                 sp[i].s1.sx = w;
                 sp[i].s1.sy = h;
+                sp[i].s1.rot = -3.14159265f * 0.25f;
                 sp[i].s2.uv1 = { (int)type * unitw, 0 , (int)type * unitw + unitw,unith };
                 return i;
             }
@@ -110,10 +117,22 @@ namespace ph::gl
 
     void updateSprite(uint index, float x, float y)
     {
-        massert(index < MAX_SPRITE, "Bad slot");
+        massert(index < MAX_SPRITE && !sp[index].s1.nodraw, "Bad slot");
 
         sp[index].s1.x = x;
         sp[index].s1.y = y;
+    }
+
+    void updateSprite(uint index, float x, float y, float z, float* color, float w, float h)
+    {
+        massert(index < MAX_SPRITE && !sp[index].s1.nodraw, "Bad slot");
+
+        sp[index].s1.x = x;
+        sp[index].s1.y = y;
+        sp[index].s1.z = z;
+        sp[index].s1.sx = w;
+        sp[index].s1.sy = h;
+        sp[index].s2.col = { color[0],color[1],color[2],1 };
     }
 
     void removeSprite(uint index)
@@ -126,7 +145,9 @@ namespace ph::gl
 
     void init()
     {
-        for (uint i = 0; i < 1000; i++)
+        printf("rng is still wrong\n");
+
+        for (uint i = 0; i < MAX_SPRITE; i++)
         {
             sp[i].s1.nodraw = true;
         }
@@ -250,24 +271,27 @@ namespace ph::gl
             keyboard.update();
             float tick = timer.getTickTimeSec();
 
-            if (keyboard.isKeyDown('W'))
+            if (vi::system::focused)
             {
-                worldView.y -= tick * 20;
-            }
-            else if (keyboard.isKeyDown('S'))
-            {
-                worldView.y += tick * 20;
-            }
-            if (keyboard.isKeyDown('A'))
-            {
-                worldView.x -= tick * 20;
-            }
-            else if (keyboard.isKeyDown('D'))
-            {
-                worldView.x += tick * 20;
-            }
+                if (keyboard.isKeyDown('W'))
+                {
+                    worldView.y -= tick * 20;
+                }
+                else if (keyboard.isKeyDown('S'))
+                {
+                    worldView.y += tick * 20;
+                }
+                if (keyboard.isKeyDown('A'))
+                {
+                    worldView.x -= tick * 20;
+                }
+                else if (keyboard.isKeyDown('D'))
+                {
+                    worldView.x += tick * 20;
+                }
 
-            keyboardstate();
+                keyboardstate();
+            }
 
             mouse.getCursorWorldPos(&ph::mouse.fworldx, &ph::mouse.fworldy);
             ph::mouse.worldy = (int)floor(ph::mouse.fworldx * cos - ph::mouse.fworldy * sin);
@@ -288,7 +312,7 @@ namespace ph::gl
 
             g.setSolid();
             g.setSpriteVS(diagonalVS);
-            for (uint i = 0; i < 1000; i++)
+            for (uint i = 0; i < MAX_SPRITE; i++)
             {
                 g.drawSprite(sp + i);
             }
@@ -323,7 +347,7 @@ namespace ph::gl
         g.destroyVertexShader(diagonalVS);
         g.destroy();
         wnd.destroy();
-    }
+    }    
         
     /// <summary>
     /// max size of el is 8 bytes
@@ -334,18 +358,13 @@ namespace ph::gl
 
         for (uint i = len - 1; i > 0; i--) 
         {
-            uint j = rng.rndInt(0, i);
+            uint j = rand(0, i);
             byte temp[8];
             memcpy(temp, arr + i * elSize, elSize);
             memcpy(arr + i * elSize, arr + j * elSize, elSize);
             memcpy(arr + j * elSize, temp, elSize);
         }
-    }
-
-    int rand(int min, int max)
-    {
-        return rng.rndInt(min, max);
-    }
+    }    
 
     void centerCamera()
     {

@@ -9,6 +9,8 @@
 
 namespace ph
 {
+	int buildingCost[] = { 0,2,1,10,150,0,6,0,50,5,8,6,0 };
+
 	uint initSprite(int x, int y, int w, int h, float r, float g, float b)
 	{
 		float color[3] = { r,g,b };
@@ -77,6 +79,18 @@ namespace ph
 		this->h = h;
 	}
 
+	void addBuildingGrid(buildingType type, int x, int y, int w, int h)
+	{
+		for (uint i = 0; i < w; i++)
+		{
+			for (uint j = 0; j < h; j++)
+			{
+				building* b = map.addBuilding();
+				b->init(type, x + i, y + j);
+			}
+		}
+	}
+
 	void building::init()
 	{
 		this->initGraphics();
@@ -92,10 +106,13 @@ namespace ph
 
 	void building::initGraphics()
 	{
+		if (this->sprite)
+			gl::removeSprite(this->sprite);
+
 		switch (this->type)
 		{
 		case buildingType::house:
-			this->sprite = initSprite(x, y, w, h, 1.0f, 0.5f, 0);
+			this->sprite = gl::addSprite((spriteType)(spriteType::h1 - 1 + this->houseLevel), (float)x, y, 0.4f, w, h); // initSprite(x, y, w, h, 1.0f, 0.5f, 0);
 			break;
 		case buildingType::waterSupply:
 			this->sprite = initSprite(x, y, w, h, 0.5f, 0.5f, 1);
@@ -112,11 +129,27 @@ namespace ph
 		case buildingType::fire:
 			this->sprite = initSprite(x, y, w, h, 1, 1, 0);
 			break;
+		case buildingType::granary:
+			this->sprite = initSprite(x, y, w, h, 0, 1, 0.5f);
+			break;
+		case buildingType::huntingLodge:
+			this->sprite = initSprite(x, y, w, h, 0, 1, 0.5f);
+			break;
+		case buildingType::bazaar:
+			this->sprite = initSprite(x, y, w, h, 0, 1, 0);
+			break;
+		case buildingType::architect:
+			this->sprite = initSprite(x, y, w, h, 36/255.0f, 49/255.0f, 54/255.0f);
+			break;
+		case buildingType::rubble:
+			this->sprite = initSprite(x, y, w, h, 0.25f, 0.25f, 0.25f);
+			break;
 		}
 	}
 
 	void building::init(buildingType type, int x, int y)
 	{
+		map.deben -= buildingCost[(int)type];
 		this->id = map.getId();
 		this->type = type;
 		this->live = true;
@@ -135,6 +168,11 @@ namespace ph
 		this->employementCounter = 0;
 		this->maxWorkers = 1;
 		this->flamable = false;
+		this->collapsable = false;
+		this->fire[0] = 1000;
+		this->fire[1] = 1000;
+		this->collapse[0] = 1000;
+		this->collapse[0] = 1000;
 
 		switch (type)
 		{
@@ -145,9 +183,7 @@ namespace ph
 			this->hasDoor = true;
 			this->water[0] = 0;
 			this->water[1] = 500;
-			this->houseLevel = 1;
-			this->fire[0] = 1000;
-			this->fire[1] = 1000;
+			this->houseLevel = 1;			
 			this->flamable = true;
 			break;
 		case buildingType::waterSupply:
@@ -173,8 +209,41 @@ namespace ph
 			map.entrance = this;
 			break;
 		case buildingType::fire:
+			this->setSize(1, 1);
 			this->fire[0] = 200;
 			this->fire[1] = 200;
+			break;
+		case buildingType::granary:
+			this->setSize(4, 4);
+			this->maxOccupants = 12;
+			this->hasDoor = true;
+			this->workplace = true;
+			this->flamable = true;
+			this->collapsable = true;
+			break;
+		case buildingType::huntingLodge:
+			this->setSize(2, 2);
+			this->maxOccupants = 6;
+			this->hasDoor = true;
+			this->workplace = true;
+			this->flamable = true;
+			break;
+		case buildingType::bazaar:
+			this->setSize(2, 2);
+			this->maxOccupants = 5;
+			this->hasDoor = true;
+			this->workplace = true;
+			this->flamable = true;
+			break;
+		case buildingType::architect:
+			this->setSize(1, 1);
+			this->maxOccupants = 5;
+			this->hasDoor = true;
+			this->workplace = true;
+			this->walkerType = bodyType::architect;
+			break;
+		case buildingType::rubble:
+			this->setSize(1, 1);
 			break;
 		}
 
@@ -217,7 +286,7 @@ namespace ph
 				this->recruiterCounter -= 1;
 			}
 		}
-		// worker
+		// walker aka service delivery
 		if (this->workplace && this->door[0] != LONG_MAX && this->workers < this->maxWorkers && this->occupants > 1)
 		{
 			if (this->workerCounter < 1)
@@ -281,14 +350,45 @@ namespace ph
 		{
 			this->fire[0] -= 1;
 			if (this->fire[0] < 0)
+			{
 				this->burnDown();
-		}
+				return;
+			}
+		}		
 		else if (this->type == buildingType::fire)
 		{
 			this->fire[0] -= 1;
 			if (this->fire[0] < 0)
+			{
+				int x = this->x;
+				int y = this->y;
 				this->remove();
+				building* b = map.addBuilding();
+				b->init(buildingType::rubble, x, y);
+			}
 		}
+
+		// collapse
+		if (this->collapsable)
+		{
+			this->collapse[0] -= 1;
+			if (this->collapse[0] < 0)
+			{
+				this->buildingCollapsed();
+				return;
+			}
+		}
+	}
+
+	void building::buildingCollapsed()
+	{
+		int w = this->w;
+		int h = this->h;
+		int x = this->x;
+		int y = this->y;
+		this->remove();
+
+		addBuildingGrid(buildingType::rubble, x, y, w, h);
 	}
 
 	void building::burnDown()
@@ -298,11 +398,8 @@ namespace ph
 		int x = this->x;
 		int y = this->y;
 		this->remove();
-		building* b = map.addBuilding();
-		massert(b);
-		b->w = w;
-		b->h = h;
-		b->init(buildingType::fire, x, y);
+
+		addBuildingGrid(buildingType::fire, x, y, w, h);
 	}
 
 	void building::remove()
@@ -439,7 +536,7 @@ namespace ph
 	{
 		massert(this->type == buildingType::house && this->occupants > 0, "bad house");
 		int oldLevel = this->houseLevel;
-		int maxOccupantsMap[] = { 0, 5, 7 };
+		int maxOccupantsMap[] = { 0, 5, 7, 9 };
 
 		switch (this->houseLevel)
 		{
@@ -455,6 +552,7 @@ namespace ph
 
 		if (this->houseLevel != oldLevel)
 		{
+			this->initGraphics();
 			this->maxOccupants = maxOccupantsMap[this->houseLevel];
 			this->water[1] = this->maxOccupants * 100;
 			if (this->water[0] > this->water[1]) this->water[0] = this->water[1];

@@ -9,6 +9,9 @@
 
 namespace ph
 {
+	// water 25-27, fire 42-51
+	int staminaMap[] = { 0,42,25,42,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+
 	struct vector2
 	{
 		int x, y;
@@ -81,7 +84,7 @@ namespace ph
 		this->live = true;
 		this->x = x;
 		this->y = y;
-		this->stamina[0] = 40;
+		this->stamina[0] = staminaMap[(int)type];
 		this->checkpoint[0] = LONG_MAX;
 		this->checkpoint[1] = LONG_MAX;
 		this->dir[0] = 0;

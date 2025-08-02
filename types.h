@@ -31,19 +31,20 @@ namespace ph
 		empty, water, rock, gold, sand, tree, reed, meadow, field
 	};
 
-	enum class spriteType : int
+	enum spriteType
 	{
-		grass, water, rock, gold, sand, road
+		grass, water, rock, gold, sand, road, h1, h2, h3
 	};
 
 	enum class buildingType : int
 	{
-		none, house, waterSupply, statueLarge, immigrantEntry, road, fireHouse, fire
+		none, house, road, waterSupply, statueLarge, immigrantEntry, fireHouse, fire, 
+		granary, huntingLodge, bazaar, architect, rubble
 	};
 
 	enum class bodyType : int
 	{
-		immigrant, recruiter, waterCarrier, fire
+		immigrant, recruiter, waterCarrier, fire, ostrich, architect, delivery, sklepikarz, hunter
 	};
 
 	struct stream;

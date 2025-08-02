@@ -23,6 +23,7 @@ namespace ph
 		cell grid[50][50];
 		int GRID_SIZE;
 		int HALF;
+		int deben;
 
 		void init();
 		cell* at(int x, int y);
@@ -37,9 +38,13 @@ namespace ph
 		void deserialize();
 		ulong getId();
 		void render(float tickProgress);
+		/// <summary>
+		/// checks if cell is acceptable, does nothing if it's not
+		/// </summary>
 		void addRoad(int x, int y);
 		building* addBuilding();
 		void removeRoad(int x, int y);
+		void fillMoisture();
 	};
 
 	extern smap map;

@@ -49,7 +49,7 @@ namespace ph
 	void start()
 	{
 		gl::init();
-		current = &theEditor;
+		current = &theGame;
 		current->init();
 		gl::run(gameloop, mouseMove, keyDown);
 	}

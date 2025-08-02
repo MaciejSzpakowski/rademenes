@@ -13,6 +13,7 @@ namespace ph
 		int door[2];
 		int water[2];
 		int fire[2];
+		int collapse[2];
 		int houseLevel;
 		uint sprite;
 		bodyType walkerType;
@@ -21,6 +22,7 @@ namespace ph
 		bool hasDoor;
 		bool workplace;
 		bool flamable;
+		bool collapsable;
 		
 		void action();
 		void init(buildingType type, int x, int y);
@@ -40,5 +42,6 @@ namespace ph
 		void recalcEmployees();
 		void evolveHouse();
 		void burnDown();
+		void buildingCollapsed();
 	};
 }

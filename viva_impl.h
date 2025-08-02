@@ -174,22 +174,21 @@ namespace vi::util
     struct rng
     {
         std::mt19937 mt;
-        uint rmin;
-        uint rmax;
+        std::uniform_int_distribution<int> distr;
 
-        rng() :mt(::time(0)), rmin((mt.min)()), rmax((mt.max)())
+        rng(int min, int max) :mt(::time(0)), distr(min, max)
         {
+            // warm up
+            for (int i = 0; i < 100; i++)
+                this->rnd();
         }
 
-        // returns a random float. range: [0.0, 1.0)
-        float rnd()
+        /// <summary>
+        /// get random number between min and max inclusive
+        /// </summary>
+        int rnd()
         {
-            return (float)this->mt() / (float)this->rmax;
-        }
-
-        int rndInt(int amin, int amax)
-        {
-            return this->mt() % (amax - amin) + amin;
+            return this->distr(this->mt);
         }
     };
 
@@ -282,6 +281,7 @@ namespace vi::system
     }
     short wheelDelta = 0;
     int rawMouseDeltax = 0;
+    bool focused = false;
     int rawMouseDeltay = 0;
     bool quitMessagePosted = false;
     byte* readFile(const char* filename, vi::memory::alloctrack* a, size_t* outSize)
@@ -362,6 +362,12 @@ namespace vi::system
 
             break;
         }
+        case WM_SETFOCUS:
+            focused = true;
+            break;
+        case WM_KILLFOCUS:
+            focused = false;
+            break;
         default:
             return DefWindowProc(hwnd, uMsg, wParam, lParam);
         }
@@ -425,6 +431,8 @@ namespace vi::system
             Rid.dwFlags = RIDEV_INPUTSINK;
             Rid.hwndTarget = this->handle;
             RegisterRawInputDevices(&Rid, 1, sizeof(RAWINPUTDEVICE));
+
+            SetFocus(this->handle);
         }
 
         void destroy()
