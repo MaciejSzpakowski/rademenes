@@ -9,7 +9,7 @@ namespace ph
 	void stream::openWriteFileStream(const char* filename)
 	{
 		this->f = fopen(filename, "wb");
-		if (!f) gl::error(__FUNCTION__". Could not open file");
+		massert(f, "Could not open file");
 	}
 
 	bool stream::openReadFileStream(const char* filename)

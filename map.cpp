@@ -33,7 +33,8 @@ namespace ph
 			{
 				bool outOfBounds = !(i >= 0 && i < GRID_SIZE && j >= 0 && j < GRID_SIZE);
 				cell* c = !outOfBounds ? &this->grid[i][j] : nullptr;
-				if (!it(c, i, j, data)) return;
+				// run only if c exists
+				if (c && !it(c, i, j, data)) return;
 			}
 		}
 	}
@@ -50,7 +51,8 @@ namespace ph
 
 				bool outOfBounds = !(i >= 0 && i < GRID_SIZE && j >= 0 && j < GRID_SIZE);
 				cell* c = !outOfBounds ? &grid[i][j] : nullptr;
-				if (!it(c, i, j, data)) return;
+				// run only if c exists
+				if (c && !it(c, i, j, data)) return;
 			}
 		}
 	}
@@ -72,7 +74,8 @@ namespace ph
 
 				bool outOfBounds = !(i >= 0 && i < GRID_SIZE && j >= 0 && j < GRID_SIZE);
 				cell* c = !outOfBounds ? &grid[i][j] : nullptr;
-				if (!it(c, i, j, data)) return;
+				// run only if c exists
+				if (c && !it(c, i, j, data)) return;
 			}
 		}
 	}
@@ -111,7 +114,7 @@ namespace ph
 
 	bool roadAddedCallback(cell* c, int x, int y, void* _)
 	{
-		if (c && c->b && c->b->hasDoor && c->b->door[0] == LONG_MAX && c->b->type != buildingType::house)
+		if (c && c->b && c->b->is(BUILDING_HASDOOR) && c->b->door[0] == LONG_MAX && !c->b->is(buildingType::house))
 		{
 			c->b->updateDoor();
 		}
@@ -133,7 +136,7 @@ namespace ph
 
 	bool roadRemovedCallback(cell* c, int x, int y, void* _)
 	{
-		if (c && c->b && c->b->hasDoor && c->b->door[0] != LONG_MAX && c->b->type != buildingType::house)
+		if (c && c->b && c->b->is(BUILDING_HASDOOR) && c->b->door[0] != LONG_MAX && !c->b->is(buildingType::house))
 		{
 			cell* currentDoor = map.at(c->b->door[0], c->b->door[1]);
 			if (!currentDoor->road)
@@ -158,19 +161,13 @@ namespace ph
 	{
 		for (uint i = 0; i < MAX_BUILDINGS; i++)
 		{
-			if (!this->buildings[i].live) return map.buildings + i;
+			if (!this->buildings[i].is(FLAG_LIVE)) return map.buildings + i;
 		}
 
 		return nullptr;
 	}
 
-	struct fillMoistureCallbackStruct
-	{
-		cell* c;
-		int i;
-	};
-
-	bool fillMoistureCallback(cell* c, int x, int y, fillMoistureCallbackStruct* callbackResult)
+	bool fillMoistureCallback(cell* c, int x, int y, void* _)
 	{
 		// TODO need to make it faster
 		if (c && !c->moisture)
@@ -191,8 +188,7 @@ namespace ph
 			{
 				if (grid[i][j].type == cellType::water)
 				{
-					fillMoistureCallbackStruct callbackResult = { &grid[i][j], 0 };
-					getArea(i - 6, j - 6, 13, 13, (CELLIT)fillMoistureCallback, &callbackResult);
+					getArea(i - 6, j - 6, 13, 13, fillMoistureCallback, nullptr);
 				}
 			}
 		}
@@ -212,12 +208,12 @@ namespace ph
 
 		for (uint i = 0; i < MAX_BUILDINGS; i++)
 		{
-			buildings[i].live = false;
+			buildings[i].flags = 0;
 		}
 
 		for (uint i = 0; i < MAX_BODIES; i++)
 		{
-			bodies[i].live = false;
+			bodies[i].flags = 0;
 		}
 
 		for (uint i = 0; i < GRID_SIZE; i++)
@@ -259,7 +255,7 @@ namespace ph
 		{
 			building* b = buildings + i;
 
-			if (!b->live) continue;
+			if (!b->is(FLAG_LIVE)) continue;
 
 			b->action();
 		}
@@ -268,7 +264,7 @@ namespace ph
 		{
 			body* b = bodies + i;
 
-			if (!b->live) continue;
+			if (!b->is(FLAG_LIVE)) continue;
 
 			b->action();
 		}
@@ -280,7 +276,7 @@ namespace ph
 		{
 			body* b = bodies + i;
 
-			if (!b->live || b->dir[0] == 0 && b->dir[1] == 0) continue;
+			if (!b->is(FLAG_LIVE) || b->dir[0] == 0 && b->dir[1] == 0) continue;
 
 			gl::updateSprite(b->sprite, b->x + b->dir[0] * tickProgress + 0.15f, b->y + b->dir[1] * tickProgress + 0.15f);
 		}
@@ -290,7 +286,7 @@ namespace ph
 	{
 		for (uint i = 0; i < MAX_BODIES; i++)
 		{
-			if (!bodies[i].live) return bodies + i;
+			if (!bodies[i].is(FLAG_LIVE)) return bodies + i;
 		}
 
 		return nullptr;

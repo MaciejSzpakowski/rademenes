@@ -9,7 +9,26 @@
 
 namespace ph
 {
-	int buildingCost[] = { 0,2,1,10,150,0,6,0,50,5,8,6,0 };
+	int buildingCost[] = { 
+		0,2,1,10,150,
+		0,6,0,50,5,8,
+		6,0 };
+	int buildingSize[][2] =
+	{
+		{0,0},
+		{1,1},
+		{1,1},
+		{2,2},
+		{3,3},
+		{1,1},
+		{1,1},
+		{1,1},
+		{4,4},
+		{2,2},
+		{2,2},
+		{1,1},
+		{1,1}
+	};
 
 	uint initSprite(int x, int y, int w, int h, float r, float g, float b)
 	{
@@ -19,13 +38,14 @@ namespace ph
 
 	bool building::tryDoor(cell* c, int x, int y)
 	{
-		if (c && (!c->b || c->b->walkable) && this->type == buildingType::house)
+		// for house 
+		if (this->is(buildingType::house) && (!c->b || c->b->is(BUILDING_WALKABLE)))
 		{
 			this->door[0] = x;
 			this->door[1] = y;
 			return true;
 		}
-		else if (c && c->road)
+		else if (c->road)
 		{
 			// skip corners
 			if (x == this->x - 1 && y == this->y - 1 || x == this->x + this->w && y == this->y - 1 ||
@@ -47,7 +67,7 @@ namespace ph
 
 	bool recalcDoors(cell* c, int x, int y, building* b)
 	{
-		if (c && c->b && c->b->hasDoor)
+		if (c->b && c->b->is(BUILDING_HASDOOR))
 		{
 			// this building has no door
 			if (c->b->door[0] == LONG_MAX)
@@ -71,12 +91,6 @@ namespace ph
 		this->door[1] = LONG_MAX;
 
 		map.getBorder(this->x - 1, this->y - 1, this->w + 2, this->h + 2, (CELLIT)initDoor, this);
-	}
-
-	void building::setSize(int w, int h)
-	{
-		this->w = w;
-		this->h = h;
 	}
 
 	void addBuildingGrid(buildingType type, int x, int y, int w, int h)
@@ -152,105 +166,77 @@ namespace ph
 		map.deben -= buildingCost[(int)type];
 		this->id = map.getId();
 		this->type = type;
-		this->live = true;
-		this->walkable = false;
+		this->flags = FLAG_LIVE;
 		this->x = x;
 		this->y = y;
 		this->door[0] = LONG_MAX;
 		this->door[1] = LONG_MAX;
-		this->hasDoor = false;
 		this->occupants = 0;
-		this->workplace = false;
 		this->recruiters = 0;
 		this->workers = 0;
 		this->recruiterCounter = 0;
 		this->workerCounter = MAX_WORKERCOUNTER;
 		this->employementCounter = 0;
 		this->maxWorkers = 1;
-		this->flamable = false;
-		this->collapsable = false;
 		this->fire[0] = 1000;
 		this->fire[1] = 1000;
 		this->collapse[0] = 1000;
-		this->collapse[0] = 1000;
+		this->collapse[1] = 1000;
+		this->w = buildingSize[(int)type][0];
+		this->h = buildingSize[(int)type][1];
 
 		switch (type)
 		{
 		case buildingType::house:
-			this->setSize(1, 1);
 			this->maxOccupants = 5;
 			this->immigrants = 0;
-			this->hasDoor = true;
+			this->flags |= BUILDING_HASDOOR;
 			this->water[0] = 0;
 			this->water[1] = 500;
 			this->houseLevel = 1;			
-			this->flamable = true;
+			this->flags |= BUILDING_FLAMABLE;
 			break;
 		case buildingType::waterSupply:
-			this->setSize(2, 2);
 			this->maxOccupants = 5;
-			this->hasDoor = true;
-			this->workplace = true;
+			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE;
 			this->walkerType = bodyType::waterCarrier;
 			break;
 		case buildingType::fireHouse:
-			this->setSize(1, 1);
 			this->maxOccupants = 6;
-			this->hasDoor = true;
-			this->workplace = true;
+			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE;
 			this->walkerType = bodyType::fire;
 			break;
-		case buildingType::statueLarge:
-			this->setSize(3, 3);
-			break;
 		case buildingType::immigrantEntry:
-			this->setSize(1, 1);
-			this->walkable = true;
+			this->flags |= BUILDING_WALKABLE;
 			map.entrance = this;
 			break;
 		case buildingType::fire:
-			this->setSize(1, 1);
 			this->fire[0] = 200;
 			this->fire[1] = 200;
 			break;
 		case buildingType::granary:
-			this->setSize(4, 4);
 			this->maxOccupants = 12;
-			this->hasDoor = true;
-			this->workplace = true;
-			this->flamable = true;
-			this->collapsable = true;
+			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE | BUILDING_FLAMABLE | BUILDING_COLLAPSABLE;
 			break;
 		case buildingType::huntingLodge:
-			this->setSize(2, 2);
 			this->maxOccupants = 6;
-			this->hasDoor = true;
-			this->workplace = true;
-			this->flamable = true;
+			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE | BUILDING_FLAMABLE;
 			break;
 		case buildingType::bazaar:
-			this->setSize(2, 2);
 			this->maxOccupants = 5;
-			this->hasDoor = true;
-			this->workplace = true;
-			this->flamable = true;
+			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE | BUILDING_FLAMABLE;
 			break;
 		case buildingType::architect:
-			this->setSize(1, 1);
 			this->maxOccupants = 5;
-			this->hasDoor = true;
-			this->workplace = true;
+			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE;
 			this->walkerType = bodyType::architect;
-			break;
-		case buildingType::rubble:
-			this->setSize(1, 1);
 			break;
 		}
 
 		this->initGraphics();
 		map.put(this, x, y);
 
-		if (this->hasDoor)
+		if (this->is(BUILDING_HASDOOR))
 			this->updateDoor();
 
 		// recalc doors around
@@ -268,7 +254,8 @@ namespace ph
 				b->init(bodyType::immigrant, map.entrance->x, map.entrance->y, this);
 		}
 		// recruiter
-		if (this->workplace && this->door[0] != LONG_MAX && (this->employementCounter < EMPLOYEECOUNTER_RECRUITER_THRESHOLD) &&
+		if (this->is(BUILDING_WORKPLACE) && this->door[0] != LONG_MAX && 
+			this->employementCounter < EMPLOYEECOUNTER_RECRUITER_THRESHOLD &&
 			this->recruiters < MAX_RECRUITERS)
 		{
 			if (this->recruiterCounter < 1)
@@ -287,7 +274,8 @@ namespace ph
 			}
 		}
 		// walker aka service delivery
-		if (this->workplace && this->door[0] != LONG_MAX && this->workers < this->maxWorkers && this->occupants > 1)
+		if (this->is(BUILDING_WORKPLACE) && this->door[0] != LONG_MAX && 
+			this->workers < this->maxWorkers && this->occupants > 1)
 		{
 			if (this->workerCounter < 1)
 			{
@@ -309,7 +297,7 @@ namespace ph
 		}
 
 		// employementCounter and rebalance employees
-		if (this->workplace && this->occupants > 0)
+		if (this->is(BUILDING_WORKPLACE) && this->occupants > 0)
 		{
 			// more employees than citizens (because house destroyed or people left)
 			if (map.employeed + map.unemployed > map.employees)
@@ -346,7 +334,7 @@ namespace ph
 		}
 
 		// fire
-		if (this->flamable)
+		if (this->is(BUILDING_FLAMABLE))
 		{
 			this->fire[0] -= 1;
 			if (this->fire[0] < 0)
@@ -354,7 +342,7 @@ namespace ph
 				this->burnDown();
 				return;
 			}
-		}		
+		}
 		else if (this->type == buildingType::fire)
 		{
 			this->fire[0] -= 1;
@@ -369,7 +357,7 @@ namespace ph
 		}
 
 		// collapse
-		if (this->collapsable)
+		if (this->is(BUILDING_COLLAPSABLE))
 		{
 			this->collapse[0] -= 1;
 			if (this->collapse[0] < 0)
@@ -404,7 +392,6 @@ namespace ph
 
 	void building::remove()
 	{
-		this->live = false;
 		map.remove(this);
 		gl::removeSprite(this->sprite);
 
@@ -416,18 +403,20 @@ namespace ph
 			break;
 		}
 
-		if (this->workplace)
+		if (this->is(BUILDING_WORKPLACE))
 		{
 			map.employeed -= this->occupants;
 			map.unemployed += this->occupants;
 		}
+
+		this->flags = 0;
 	}
 
 	void building::serialize(stream* it)
 	{
-		it->writeByte(this->live);
+		it->writeByte(this->is(FLAG_LIVE));
 
-		if (!this->live) return;
+		if (!this->is(FLAG_LIVE)) return;
 
 		it->writeUint64(this->id);
 		it->writeInt32(this->x);
@@ -444,15 +433,15 @@ namespace ph
 		it->writeInt32(this->workerCounter);
 		it->writeInt32(this->door[0]);
 		it->writeInt32(this->door[1]);
-		it->writeByte(this->walkable);
-		it->writeByte(this->hasDoor);
-		it->writeByte(this->workplace);
+		//it->writeByte(this->walkable);
+		//it->writeByte(this->hasDoor);
+		//it->writeByte(this->workplace);
 	}
 
 	void building::deserialize(stream* s)
 	{
-		this->live = s->readByte();
-		if (!this->live) return;
+		//this->live = s->readByte();
+		//if (!this->live) return;
 
 		this->id = s->readUint64();
 		this->x = s->readInt32();
@@ -469,34 +458,11 @@ namespace ph
 		this->workerCounter = s->readInt32();
 		this->door[0] = s->readInt32();
 		this->door[1] = s->readInt32();
-		this->walkable = s->readByte();
-		this->hasDoor = s->readByte();
-		this->workplace = s->readByte();
+		//this->walkable = s->readByte();
+		//this->hasDoor = s->readByte();
+		//this->workplace = s->readByte();
 
 		this->init();
-	}
-
-	void building::getSize(buildingType type, int* size)
-	{
-		switch (type)
-		{
-		case buildingType::house:
-			size[0] = 1;
-			size[1] = 1;
-			break;
-		case buildingType::waterSupply:
-			size[0] = 2;
-			size[1] = 2;
-			break;
-		case buildingType::statueLarge:
-			size[0] = 3;
-			size[1] = 3;
-			break;
-		case buildingType::immigrantEntry:
-			size[0] = 1;
-			size[1] = 1;
-			break;
-		}
 	}
 
 	void building::recruit()
@@ -511,7 +477,7 @@ namespace ph
 
 	void building::recalcEmployees()
 	{
-		massert(this->workplace);
+		massert(this->is(BUILDING_WORKPLACE));
 
 		// hire
 		if (this->employementCounter > 0 && this->occupants < this->maxOccupants)
@@ -557,5 +523,15 @@ namespace ph
 			this->water[1] = this->maxOccupants * 100;
 			if (this->water[0] > this->water[1]) this->water[0] = this->water[1];
 		}
+	}
+
+	bool building::is(int flag)
+	{
+		return this->flags & flag;
+	}
+
+	bool building::is(buildingType type)
+	{
+		return this->type == type;
 	}
 }

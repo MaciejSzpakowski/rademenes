@@ -11,8 +11,9 @@
 namespace ph::builder
 {
 	float spriteColor[] = { 0.5f,0.5f ,0.5f };
+	float dim[2];
 	uint sprite1, sprite2;
-	int index = 0;
+	int index;
 	char modeDesc[20];
 	const int optionsLen = 11;
 	buildingType options[optionsLen] = { buildingType::none, buildingType::road,
@@ -27,9 +28,16 @@ namespace ph::builder
 	};
 	mouseState mState = mouseState::def;
 
+	buildingType getBuilding()
+	{
+		return options[index];
+	}
+
 	void init()
 	{
 		index = 0;
+		dim[0] = 1;
+		dim[1] = 1;
 		sprite1 = gl::addSprite(spriteColor, 0, 0, 0.9f, 0, 0);
 		sprite2 = gl::addSprite(spriteColor, 0, 0, 0.9f, 0, 0);
 	}
@@ -61,11 +69,9 @@ namespace ph::builder
 		index += delta;
 		if (index < 0) index = optionsLen - 1;
 		if (index >= optionsLen) index = 0;
-	}
-
-	buildingType getBuilding()
-	{
-		return options[index];
+		int* size = buildingSize[(int)getBuilding()];
+		dim[0] = size[0];
+		dim[1] = size[1];
 	}
 
 	const char* getDesc()
@@ -171,7 +177,7 @@ namespace ph::builder
 		}
 		else
 		{
-			gl::updateSprite(sprite1, mouse.worldx, mouse.worldy, 0.9f, spriteColor, 1, 1);
+			gl::updateSprite(sprite1, mouse.worldx, mouse.worldy, 0.9f, spriteColor, dim[0], dim[1]);
 			gl::updateSprite(sprite2, 0, 0, 0.9f, spriteColor,0,0);
 		}
 	}
@@ -187,11 +193,9 @@ namespace ph::builder
 		{
 			cell* c = map.at(mouse.worldx, mouse.worldy);
 			if (!c) return;
-			building* b = nullptr;
-			int size[2];
-			b->getSize(getBuilding(), size);
 			bool goodToGo = true;
 			// check for obstructions
+			int* size = buildingSize[(int)getBuilding()];
 			map.getArea(mouse.worldx, mouse.worldy, size[0], size[1], (CELLIT)checkForEptyFields, &goodToGo);
 			if (!goodToGo) return;
 
@@ -204,7 +208,7 @@ namespace ph::builder
 
 			if (!goodToGo) return;
 
-			b = map.addBuilding();
+			building* b = map.addBuilding();
 			b->init(getBuilding(), mouse.worldx, mouse.worldy);
 		}
 	}

@@ -10,13 +10,31 @@
 namespace ph
 {
 	// water 25-27, fire 42-51
-	int staminaMap[] = { 0,42,25,42,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+	int staminaMap[] = { 
+		0,42,25,42,0,
+		42,0,0,0,0,
+		0,0,0,0,0,
+		0,0,0,0,0,
+		0,0,0,0,0,
+		0,0,0,0,0,
+		0,0,0 
+	};
 
 	struct vector2
 	{
 		int x, y;
 	};
 	
+	bool body::is(int flag)
+	{
+		return this->flags & flag;
+	}
+
+	bool body::is(bodyType type)
+	{
+		return this->type == type;
+	}
+
 	bool effect(cell* c, int x, int y, body* b)
 	{
 		if (c) b->effect(c, x, y);
@@ -32,22 +50,28 @@ namespace ph
 		switch (this->type)
 		{
 		case bodyType::recruiter:			
-			if (this->roam && b && b->type == buildingType::house && b->occupants > 0)
+			if (this->is(BODY_ROAM) && b && b->is(buildingType::house) && b->occupants > 0)
 			{
 				building* targetb = this->getb();
 				if (targetb) targetb->recruit();
 			}
 			break;
 		case bodyType::waterCarrier:
-			if (b && b->type == buildingType::house && b->occupants > 0)
+			if (b && b->is(buildingType::house) && b->occupants > 0)
 			{
 				b->water[0] = b->water[1];
 			}
 			break;
 		case bodyType::fire:
-			if (b && b->flamable)
+			if (b && b->is(BUILDING_FLAMABLE))
 			{
 				b->fire[0] = b->fire[1];
+			}
+			break;
+		case bodyType::architect:
+			if (b && b->is(BUILDING_COLLAPSABLE))
+			{
+				b->collapse[0] = b->collapse[1];
 			}
 			break;
 		}
@@ -79,19 +103,17 @@ namespace ph
 
 	void body::init(bodyType type, int x, int y, building* target)
 	{
+		this->flags = FLAG_LIVE;
 		this->id = map.getId();
 		this->type = type;
-		this->live = true;
 		this->x = x;
 		this->y = y;
 		this->stamina[0] = staminaMap[(int)type];
 		this->checkpoint[0] = LONG_MAX;
 		this->checkpoint[1] = LONG_MAX;
 		this->dir[0] = 0;
-		this->dir[1] = 0;		
-		this->roam = false;
+		this->dir[1] = 0;
 		this->sprite = LONG_MAX;
-		this->hasEffect = false;
 
 		if (target)
 		{
@@ -118,8 +140,8 @@ namespace ph
 		case bodyType::recruiter:
 		case bodyType::waterCarrier:
 		case bodyType::fire:
-			this->roam = true;
-			this->hasEffect = true;
+		case bodyType::architect:
+			this->flags |= BODY_ROAM | BODY_HAS_EFFECT;
 			break;
 		}
 
@@ -142,38 +164,66 @@ namespace ph
 		case bodyType::fire:
 			this->sprite = initSprite(x, y, 1.0f, 0.5f, 0.5f);
 			break;
+		case bodyType::architect:
+			this->sprite = initSprite(x, y, 36 / 255.0f, 49 / 255.0f, 54 / 255.0f);
+			break;
 		}
 	}
 
 	void body::initDir()
 	{
-		if (this->target[0] > this->x)
+		// if service walker cannot find wayback upon returning that it's destroyed right away
+		// if service walker started return and then there is some obstruction (road was destroyed and building was placed) then it's destroyed when hits obstruction
+		// if service walker started return and road was destroyed (but no obstruction), it remembers the path and walks over the empty space
+		// actually when return starts, entire path back is computed so even if all roads are removed by space is empty, walker will walk back just fine
+
+		if (this->is(BODY_RETURN))
 		{
-			this->dir[0] = 1;
-			this->dir[1] = 0;
-			this->checkpoint[0] = this->target[0];
-			this->checkpoint[1] = this->y;
+			int dx = this->path[pathIt][0] - this->x;
+			if (dx < 0)
+				this->dir[0] = -1;
+			else if (dx > 0)
+				this->dir[0] = 1;
+			else
+				this->dir[0] = 0;
+			int dy = this->path[pathIt][1] - this->y;
+			if (dy < 0)
+				this->dir[1] = -1;
+			else if (dy > 0)
+				this->dir[1] = 1;
+			else
+				this->dir[1] = 0;
 		}
-		else if (this->target[0] < this->x)
+		else
 		{
-			this->dir[0] = -1;
-			this->dir[1] = 0;
-			this->checkpoint[0] = this->target[0];
-			this->checkpoint[1] = this->y;
-		}
-		else if (this->target[1] > this->y)
-		{
-			this->dir[0] = 0;
-			this->dir[1] = 1;
-			this->checkpoint[0] = this->x;
-			this->checkpoint[1] = this->target[1];
-		}
-		else if (this->target[1] < this->y)
-		{
-			this->dir[0] = 0;
-			this->dir[1] = -1;
-			this->checkpoint[0] = this->x;
-			this->checkpoint[1] = this->target[1];
+			if (this->target[0] > this->x)
+			{
+				this->dir[0] = 1;
+				this->dir[1] = 0;
+				this->checkpoint[0] = this->target[0];
+				this->checkpoint[1] = this->y;
+			}
+			else if (this->target[0] < this->x)
+			{
+				this->dir[0] = -1;
+				this->dir[1] = 0;
+				this->checkpoint[0] = this->target[0];
+				this->checkpoint[1] = this->y;
+			}
+			else if (this->target[1] > this->y)
+			{
+				this->dir[0] = 0;
+				this->dir[1] = 1;
+				this->checkpoint[0] = this->x;
+				this->checkpoint[1] = this->target[1];
+			}
+			else if (this->target[1] < this->y)
+			{
+				this->dir[0] = 0;
+				this->dir[1] = -1;
+				this->checkpoint[0] = this->x;
+				this->checkpoint[1] = this->target[1];
+			}
 		}
 	}
 
@@ -186,7 +236,7 @@ namespace ph
 		switch (this->type)
 		{
 		case bodyType::immigrant:
-			if (b && b->live && b->type == buildingType::house && 
+			if (b && b->is(FLAG_LIVE) && b->is(buildingType::house) && 
 				b->occupants < b->maxOccupants)
 			{
 				map.citizens += 1;
@@ -197,14 +247,15 @@ namespace ph
 			}
 			break;
 		case bodyType::recruiter:
-			if (b && b->live && b->id == this->targetbId)
+			if (b && b->is(FLAG_LIVE) && b->id == this->targetbId)
 			{
 				b->recruiters -= 1;
 			}
 			break;
 		case bodyType::waterCarrier:
 		case bodyType::fire:
-			if (b && b->live && b->id == this->targetbId)
+		case bodyType::architect:
+			if (b && b->is(FLAG_LIVE) && b->id == this->targetbId)
 			{
 				b->workers -= 1;
 			}
@@ -216,25 +267,37 @@ namespace ph
 	void body::action()
 	{
 		// always remove stamina
-		if (this->roam && this->stamina[0] > 0)
+		if (this->is(BODY_ROAM) && this->stamina[0] > 0)
 			this->stamina[0] -= 1;
 
 		// move
 		if (this->dir[0] != 0 || this->dir[1] != 0)
 		{
+			if (this->is(BODY_RETURN))
+			{
+				cell* c = map.at(this->x + this->dir[0], this->y + this->dir[1]);
+				// actual logic: path interrupted, remove
+				if (c->b && !c->b->is(BUILDING_WALKABLE))
+				{
+					this->arrive();
+					return;
+				}
+			}
+
 			this->x += this->dir[0];
 			this->y += this->dir[1];
 			gl::updateSprite(this->sprite, this->x, this->y);
 		}
 
 		// effect
-		if (hasEffect)
+		if (this->is(BODY_HAS_EFFECT))
 		{
-			map.getBorder(this->x - 1, this->y - 1, 3, 3, (CELLIT)ph::effect, this);
+			// so far all effect have range of 2
+			map.getBorder(this->x - 2, this->y - 2, 5, 5, (CELLIT)ph::effect, this);
 		}
 		
 		// direction
-		if (this->roam && this->stamina[0] > 0)
+		if (this->is(BODY_ROAM) && this->stamina[0] > 0)
 		{
 			vector2 directions[] = { {LONG_MAX,LONG_MAX },{LONG_MAX,LONG_MAX },{LONG_MAX,LONG_MAX },{LONG_MAX,LONG_MAX } };
 			map.getBorderNoCorners(this->x - 1, this->y - 1, 3, 3, (CELLIT)getRoad, directions);
@@ -304,18 +367,38 @@ namespace ph
 			// something is wrong
 			else
 			{
-				this->roam = false;
+				REMOVE_FLAG(BODY_ROAM)
 				this->initDir();
 			}
 		}
-		else if (this->roam)
+		// stamina is 0
+		else if (this->is(BODY_ROAM))
 		{
-			this->roam = false;
+			massert(this->stamina[0] <= 0, "stamina is positive");
+			REMOVE_FLAG(BODY_ROAM)			
+
+			int pos[2] = { x,y };
+			// actual logic: if cannot find path when init return then remove
+			int pathlen = getPathRoad(pos, this->target, this->path);
+			if (pathlen == 0)
+			{
+				this->arrive();
+				return;
+			}
+
+			this->flags |= BODY_RETURN;
+			this->pathIt = pathlen -= 1;
 			this->initDir();
 		}
 		else if (this->targetb[0] != LONG_MAX && this->x == this->target[0] && this->y == this->target[1])
 		{
 			this->arrive();
+		}
+		else if (this->is(BODY_RETURN) && this->path[pathIt][0] == this->x && this->path[pathIt][1] == this->y)
+		{
+			massert(this->pathIt > 0, "path run off");
+			this->pathIt -= 1;
+			this->initDir();
 		}
 		else if (this->checkpoint[0] != LONG_MAX && this->x == this->checkpoint[0] && this->y == this->checkpoint[1])
 		{
@@ -327,24 +410,19 @@ namespace ph
 		}
 
 		// validate building
+		// remove if building is gone
 		if (this->targetbId != 0)
 		{
 			cell* c = map.at(this->targetb[0], this->targetb[1]);
-			if (!c || !c->b || c->b->id != this->targetbId)
+			if (!c->b || c->b->id != this->targetbId)
 				this->remove();
 		}
 	}
 
 	void body::remove()
 	{
-		this->live = false;
+		this->flags = 0;
 		gl::removeSprite(this->sprite);
-
-		switch (this->type)
-		{
-		case bodyType::immigrant:
-			break;
-		}
 	}
 
 	building* body::getb()
@@ -353,13 +431,13 @@ namespace ph
 		if (!c) return nullptr;
 		building* b = c->b;
 		if (!b) return nullptr;
-		massert(b->live);
+		massert(b->is(FLAG_LIVE));
 		return b->id == this->targetbId ? b : nullptr;
 	}
 
 	void body::serialize(stream* s)
 	{
-		s->writeByte(this->live);
+		/*s->writeByte(this->live);
 
 		if (!this->live) return;
 
@@ -373,12 +451,12 @@ namespace ph
 		s->write(this->target, 8);
 		s->write(this->checkpoint, 8);
 		s->write(this->stamina, 8);
-		s->writeByte(this->roam);
+		s->writeByte(this->roam);*/
 	}
 
 	void body::deserialize(stream* s)
 	{
-		this->live = s->readByte();
+		/*this->live = s->readByte();
 		if (!this->live) return;
 
 		this->id = s->readUint64();
@@ -393,6 +471,6 @@ namespace ph
 		s->read(this->stamina, 8);
 		this->roam = s->readByte();
 
-		this->init();
+		this->init();*/
 	}
 }

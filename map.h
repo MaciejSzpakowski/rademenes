@@ -4,12 +4,13 @@ namespace ph
 {
 	struct cell
 	{
+		ulong visited;
 		building* b;
-		bool road;
 		uint spriteIndex;
 		uint roadSpriteIndex;
+		cellType type;
 		bool moisture;
-		cellType type;		
+		bool road;
 	};
 
 	struct smap
@@ -24,6 +25,7 @@ namespace ph
 		int GRID_SIZE;
 		int HALF;
 		int deben;
+
 
 		void init();
 		cell* at(int x, int y);

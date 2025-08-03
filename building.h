@@ -5,6 +5,7 @@ namespace ph
 	struct building
 	{
 		ulong id;
+		ulong flags;
 		int x, y, w, h;
 		buildingType type;
 		int occupants, maxOccupants, immigrants, recruiters, workers, maxWorkers;
@@ -17,12 +18,6 @@ namespace ph
 		int houseLevel;
 		uint sprite;
 		bodyType walkerType;
-		bool live;
-		bool walkable;
-		bool hasDoor;
-		bool workplace;
-		bool flamable;
-		bool collapsable;
 		
 		void action();
 		void init(buildingType type, int x, int y);
@@ -32,16 +27,16 @@ namespace ph
 		void init();
 		bool tryDoor(cell* c, int x, int y);
 		void updateDoor();
-		void setSize(int w, int h);
 		void remove();
 		void initGraphics();
 		void serialize(stream* s);
 		void deserialize(stream* s);
-		void getSize(buildingType type, int* size);
 		void recruit();
 		void recalcEmployees();
 		void evolveHouse();
 		void burnDown();
 		void buildingCollapsed();
+		bool is(int flag);
+		bool is(buildingType type);
 	};
 }
