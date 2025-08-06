@@ -11,7 +11,7 @@ typedef void(__stdcall* KEYDOWNPROC)(int key);
 #define MAX_ANIMAL_SPAWN_COUNTER 20
 #define NOPOS LONG_MAX
 #define MAX_ANIMAL_COUNT 7 // actual value, animals per spawn point
-#define MAX_ANIMAL_MOVE_COUNTER 1
+#define MAX_ANIMAL_MOVE_COUNTER 40
 #define MAX_RESOURCE_TYPES 1
 #define MAX_PATH 30
 #define MAX_BODIES 5000
