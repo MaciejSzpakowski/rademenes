@@ -16,8 +16,11 @@ namespace ph
 		int fire[2];
 		int collapse[2];
 		int houseLevel;
-		uint sprite;
+		int resources[MAX_RESOURCE_TYPES][2];
 		bodyType walkerType;
+		bodyType animalType;
+
+		uint sprite;
 		
 		void action();
 		void init(buildingType type, int x, int y);

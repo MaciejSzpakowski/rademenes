@@ -12,22 +12,29 @@ namespace ph
 	int buildingCost[] = { 
 		0,2,1,10,150,
 		0,6,0,50,5,8,
-		6,0 };
+		6,0,0,0,0,
+		0,0,0,0,0,
+		0,0,0,0,0,
+		0,0,0,0,0,
+		0,0,0,0,0,
+		0,0,0,0,0,
+		0,0,0,0,0,
+		0,0,0,0,0,
+		0,0,0,0,0,
+	};
 	int buildingSize[][2] =
 	{
-		{0,0},
-		{1,1},
-		{1,1},
-		{2,2},
-		{3,3},
-		{1,1},
-		{1,1},
-		{1,1},
-		{4,4},
-		{2,2},
-		{2,2},
-		{1,1},
-		{1,1}
+		{0,0},{1,1},{1,1},{2,2},{3,3},
+		{1,1},{1,1},{1,1},{4,4},{2,2},
+		{2,2},{1,1},{1,1},{1,1},{1,1},
+		{1,1},{1,1},{1,1},{1,1},{1,1},
+		{1,1},{1,1},{1,1},{1,1},{1,1},
+		{1,1},{1,1},{1,1},{1,1},{1,1},
+		{1,1},{1,1},{1,1},{1,1},{1,1},
+		{1,1},{1,1},{1,1},{1,1},{1,1},
+		{1,1},{1,1},{1,1},{1,1},{1,1},
+		{1,1},{1,1},{1,1},{1,1},{1,1},
+		{1,1},{1,1},{1,1},{1,1},{1,1},
 	};
 
 	uint initSprite(int x, int y, int w, int h, float r, float g, float b)
@@ -38,14 +45,7 @@ namespace ph
 
 	bool building::tryDoor(cell* c, int x, int y)
 	{
-		// for house 
-		if (this->is(buildingType::house) && (!c->b || c->b->is(BUILDING_WALKABLE)))
-		{
-			this->door[0] = x;
-			this->door[1] = y;
-			return true;
-		}
-		else if (c->road)
+		if (c->road)
 		{
 			// skip corners
 			if (x == this->x - 1 && y == this->y - 1 || x == this->x + this->w && y == this->y - 1 ||
@@ -112,7 +112,7 @@ namespace ph
 
 		switch (type)
 		{
-		case buildingType::immigrantEntry:
+		case buildingType::entry:
 			map.entrance = this;
 			break;
 		}
@@ -134,7 +134,7 @@ namespace ph
 		case buildingType::statueLarge:
 			this->sprite = initSprite(x, y, w, h, 0.5f, 0.5f, 0.5f);
 			break;
-		case buildingType::immigrantEntry:
+		case buildingType::entry:
 			this->sprite = initSprite(x, y, w, h, 1, 1, 1);
 			break;
 		case buildingType::fireHouse:
@@ -184,13 +184,17 @@ namespace ph
 		this->collapse[1] = 1000;
 		this->w = buildingSize[(int)type][0];
 		this->h = buildingSize[(int)type][1];
+		for (uint i = 0; i < MAX_RESOURCE_TYPES; i++)
+		{
+			this->resources[i][0] = 0;
+			this->resources[i][1] = 20000;
+		}
 
 		switch (type)
 		{
 		case buildingType::house:
 			this->maxOccupants = 5;
 			this->immigrants = 0;
-			this->flags |= BUILDING_HASDOOR;
 			this->water[0] = 0;
 			this->water[1] = 500;
 			this->houseLevel = 1;			
@@ -206,7 +210,7 @@ namespace ph
 			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE;
 			this->walkerType = bodyType::fire;
 			break;
-		case buildingType::immigrantEntry:
+		case buildingType::entry:
 			this->flags |= BUILDING_WALKABLE;
 			map.entrance = this;
 			break;
@@ -231,6 +235,10 @@ namespace ph
 			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE;
 			this->walkerType = bodyType::architect;
 			break;
+		case buildingType::animalSpawn:
+			this->workerCounter = MAX_ANIMAL_SPAWN_COUNTER;
+			this->maxOccupants = MAX_ANIMAL_COUNT;
+			break;
 		}
 
 		this->initGraphics();
@@ -238,9 +246,6 @@ namespace ph
 
 		if (this->is(BUILDING_HASDOOR))
 			this->updateDoor();
-
-		// recalc doors around
-		map.getBorder(this->x - 1, this->y - 1, this->w + 2, this->h + 2, (CELLIT)recalcDoors, nullptr);
 	}
 
 	void building::action()
@@ -343,7 +348,7 @@ namespace ph
 				return;
 			}
 		}
-		else if (this->type == buildingType::fire)
+		else if (this->is(buildingType::fire))
 		{
 			this->fire[0] -= 1;
 			if (this->fire[0] < 0)
@@ -364,6 +369,31 @@ namespace ph
 			{
 				this->buildingCollapsed();
 				return;
+			}
+		}
+
+		if (this->is(buildingType::animalSpawn) && this->occupants < this->maxOccupants)
+		{
+			this->workerCounter -= 1;
+			if (this->workerCounter < 1)
+			{
+				this->workerCounter = MAX_ANIMAL_SPAWN_COUNTER;
+
+				// find random spot to spawn animal
+				while (true)
+				{
+					int rx = gl::rand(-3, 3);
+					int ry = gl::rand(-3, 3);
+					cell* c = map.at(this->x + rx, this->y + ry);
+					// try again if out of bounds, building, water (non water animal)
+					if (!c || c->b || c->type == cellType::water && !this->is(BUILDING_WATER_ANIMAL_SPAWNER))
+						continue;
+
+					body* animal = map.addBody();
+					animal->init(this->animalType, this->x + rx, this->y + ry, this);
+					this->occupants += 1;
+					break;
+				}
 			}
 		}
 	}

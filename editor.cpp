@@ -42,7 +42,7 @@ namespace ph
 			{
 				cell* c = map.at(i, j);
 				massert(c,"cell is null");
-				if (c->b && c->b->type == buildingType::immigrantEntry)
+				if (c->b && c->b->type == buildingType::entry)
 					s.writeInt32((int)editorBuildType::entrance);
 				else
 					s.writeInt32((int)c->type);
@@ -69,7 +69,7 @@ namespace ph
 				if (data == (int)editorBuildType::entrance)
 				{
 					building* b = map.addBuilding();
-					b->init(buildingType::immigrantEntry, i, j);
+					b->init(buildingType::entry, i, j);
 				}
 				else if(data > 0)
 				{
@@ -124,7 +124,7 @@ namespace ph
 			else if (this->buildIndex == (int)editorBuildType::entrance)
 			{
 				building* b = map.addBuilding();
-				b->init(buildingType::immigrantEntry, mouse.worldx, mouse.worldy);
+				b->init(buildingType::entry, mouse.worldx, mouse.worldy);
 			}
 		}
 		else if (gl::isKeyPressed(0x74)) // f5

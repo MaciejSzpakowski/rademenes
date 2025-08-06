@@ -244,6 +244,13 @@ namespace ph
 
 		this->fillMoisture();
 
+		this->entrance = map.addBuilding();
+		this->entrance->init(buildingType::entry, 27, 0);
+
+		building* hunt = map.addBuilding();
+		hunt->init(buildingType::animalSpawn, 10, 37);
+		hunt->animalType = bodyType::ostrich;
+
 		//deserialize();
 	}
 
@@ -370,5 +377,24 @@ namespace ph
 	{
 		this->id += 1;
 		return this->id;
+	}
+
+	bool smap::areaHasBody(int x, int y, int w, int h)
+	{
+		for (uint i = 0; i < MAX_BODIES; i++)
+		{
+			if (!this->bodies[i].is(FLAG_LIVE)) continue;
+
+			for (int a = x; a < x + w; a++)
+			{
+				for (int b = y; b < y + h; b++)
+				{
+					if (this->bodies[i].x == a && this->bodies[i].y == b)
+						return true;
+				}
+			}
+		}
+
+		return false;
 	}
 }

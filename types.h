@@ -8,6 +8,11 @@ typedef void(__stdcall* KEYDOWNPROC)(int key);
 
 #define massert(cond,msg) gl::_assert(cond, __FUNCTION__## " " ## msg)
 
+#define MAX_ANIMAL_SPAWN_COUNTER 20
+#define NOPOS LONG_MAX
+#define MAX_ANIMAL_COUNT 7 // actual value, animals per spawn point
+#define MAX_ANIMAL_MOVE_COUNTER 1
+#define MAX_RESOURCE_TYPES 1
 #define MAX_PATH 30
 #define MAX_BODIES 5000
 #define MAX_BUILDINGS 5000
@@ -23,11 +28,15 @@ typedef void(__stdcall* KEYDOWNPROC)(int key);
 #define BODY_ROAM 0x2
 #define BODY_HAS_EFFECT 0x4
 #define BODY_RETURN 0x8
+#define BODY_ANIMAL 0x10
+#define BODY_MOVING 0x20
+#define BODY_WATER_ANIMAL 0x40
 #define BUILDING_WALKABLE 0x2
 #define BUILDING_HASDOOR 0x4
 #define BUILDING_WORKPLACE 0x8
 #define BUILDING_FLAMABLE 0x10
 #define BUILDING_COLLAPSABLE 0x20
+#define BUILDING_WATER_ANIMAL_SPAWNER 0x40
 #define REMOVE_FLAG(flag) this->flags ^= (flag);
 
 namespace ph
@@ -51,14 +60,19 @@ namespace ph
 	enum class buildingType : int
 	{
 		none, house, road, waterSupply, statueLarge, 
-		immigrantEntry, fireHouse, fire, granary, huntingLodge, 
-		bazaar, architect, rubble
+		entry, exit, fireHouse, fire, granary, huntingLodge, 
+		bazaar, architect, rubble, animalSpawn
 	};
 
 	enum class bodyType : int
 	{
 		immigrant, recruiter, waterCarrier, fire, ostrich, 
 		architect, delivery, sklepikarz, hunter
+	};
+
+	enum class resourceType : int
+	{
+		meat
 	};
 
 	struct stream;

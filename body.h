@@ -16,6 +16,9 @@ namespace ph
 		int target[2];
 		int checkpoint[2];
 		int stamina[2];
+		int animalMoveCounter;
+		int hp;
+
 		uint sprite;
 
 		void init(bodyType type, int x, int y, building* target);
@@ -34,5 +37,7 @@ namespace ph
 		building* getb();
 		bool is(int flag);
 		bool is(bodyType type);
+		void animalAction();
+		bool animalStopMovingIfObstruction();
 	};
 }

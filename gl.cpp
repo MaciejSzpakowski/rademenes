@@ -29,7 +29,7 @@ namespace ph::gl
     float lasttext2update;
     vi::input::mouse mouse;
     vi::input::keyboard keyboard;
-    vi::util::rng rng{ 1,1000 };
+    vi::util::rng rng;
     vi::gl::camera worldView;
     int GRID_SPRITE_COUNT;
     ID3D11VertexShader* diagonalVS;
@@ -55,10 +55,12 @@ namespace ph::gl
         if (!cnd) error(str);
     }
 
+    /// <summary>
+    /// random number between min and exclusive max
+    /// </summary>
     int rand(int min, int max)
     {
-        // TODO
-        // fix this later to have multiple distributions
+        // TODO this is not good
         return rng.rnd() % (max - min) + min;
     }
 
@@ -153,6 +155,7 @@ namespace ph::gl
         }
 
         // viva
+        rng.init(1, 1000000000);
         gameTime = 0;
         worldView = {};
         worldView.scale = 0.1f;

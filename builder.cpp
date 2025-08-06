@@ -17,7 +17,7 @@ namespace ph::builder
 	char modeDesc[20];
 	const int optionsLen = 11;
 	buildingType options[optionsLen] = { buildingType::none, buildingType::road,
-		buildingType::house, buildingType::waterSupply, buildingType::immigrantEntry,
+		buildingType::house, buildingType::waterSupply, buildingType::entry,
 		buildingType::statueLarge, buildingType::fireHouse, buildingType::granary ,
 		buildingType::bazaar , buildingType::huntingLodge , buildingType::architect };
 	const char* desc[] = { "none","road","house","water supply","entry","large statue","fire house","granary","bazaar","hunting lodge","architect" };
@@ -207,6 +207,10 @@ namespace ph::builder
 			}
 
 			if (!goodToGo) return;
+
+			// dont build on bodies
+			if(map.areaHasBody(mouse.worldx, mouse.worldy, size[0], size[1]))
+				return;
 
 			building* b = map.addBuilding();
 			b->init(getBuilding(), mouse.worldx, mouse.worldy);

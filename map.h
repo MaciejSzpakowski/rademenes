@@ -20,6 +20,8 @@ namespace ph
 		int employees, employeed, unemployed;
 		building buildings[MAX_BUILDINGS];
 		building* entrance;
+		building* huntingSpot[10];
+		building* fishingSpot[10];
 		body bodies[MAX_BODIES];
 		cell grid[50][50];
 		int GRID_SIZE;
@@ -47,6 +49,7 @@ namespace ph
 		building* addBuilding();
 		void removeRoad(int x, int y);
 		void fillMoisture();
+		bool areaHasBody(int x, int y, int w, int h);
 	};
 
 	extern smap map;

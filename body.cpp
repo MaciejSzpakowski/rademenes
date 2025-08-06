@@ -109,8 +109,8 @@ namespace ph
 		this->x = x;
 		this->y = y;
 		this->stamina[0] = staminaMap[(int)type];
-		this->checkpoint[0] = LONG_MAX;
-		this->checkpoint[1] = LONG_MAX;
+		this->checkpoint[0] = NOPOS;
+		this->checkpoint[1] = NOPOS;
 		this->dir[0] = 0;
 		this->dir[1] = 0;
 		this->sprite = LONG_MAX;
@@ -119,16 +119,16 @@ namespace ph
 		{
 			this->targetb[0] = target->x;
 			this->targetb[1] = target->y;
-			this->target[0] = target->door[0];
-			this->target[1] = target->door[1];
+			this->target[0] = this->is(bodyType::immigrant) ? target->x : target->door[0];
+			this->target[1] = this->is(bodyType::immigrant) ? target->y : target->door[1];
 			this->targetbId = target->id;
 		}
 		else
 		{
-			this->targetb[0] = LONG_MAX;
-			this->targetb[1] = LONG_MAX;
-			this->target[0] = LONG_MAX;
-			this->target[1] = LONG_MAX;
+			this->targetb[0] = NOPOS;
+			this->targetb[1] = NOPOS;
+			this->target[0] = NOPOS;
+			this->target[1] = NOPOS;
 			this->targetbId = 0;
 		}
 
@@ -142,6 +142,10 @@ namespace ph
 		case bodyType::fire:
 		case bodyType::architect:
 			this->flags |= BODY_ROAM | BODY_HAS_EFFECT;
+			break;
+		case bodyType::ostrich:
+			this->flags |= BODY_ANIMAL;
+			this->animalMoveCounter = gl::rand(MAX_ANIMAL_MOVE_COUNTER, MAX_ANIMAL_MOVE_COUNTER + 3); // actual logic: wait time between moves is random
 			break;
 		}
 
@@ -167,6 +171,9 @@ namespace ph
 		case bodyType::architect:
 			this->sprite = initSprite(x, y, 36 / 255.0f, 49 / 255.0f, 54 / 255.0f);
 			break;
+		case bodyType::ostrich:
+			this->sprite = initSprite(x, y, 1, 1, 1);
+			break;
 		}
 	}
 
@@ -176,6 +183,7 @@ namespace ph
 		// if service walker started return and then there is some obstruction (road was destroyed and building was placed) then it's destroyed when hits obstruction
 		// if service walker started return and road was destroyed (but no obstruction), it remembers the path and walks over the empty space
 		// actually when return starts, entire path back is computed so even if all roads are removed by space is empty, walker will walk back just fine
+		// return will be computed even if it's very long (for example original path was destroyed)
 
 		if (this->is(BODY_RETURN))
 		{
@@ -259,13 +267,95 @@ namespace ph
 			{
 				b->workers -= 1;
 			}
+			break;
+		case bodyType::ostrich:
+			this->animalMoveCounter = MAX_ANIMAL_MOVE_COUNTER;
+			this->dir[0] = 0;
+			this->dir[1] = 0;
+			break;
 		}
 
-		this->remove();
+		if(!this->is(BODY_ANIMAL))
+			this->remove();
+	}
+
+	bool body::animalStopMovingIfObstruction()
+	{
+		if (this->dir[0] != 0 || this->dir[1] != 0)
+		{
+			cell* cnext = map.at(this->x + this->dir[0], this->y + this->dir[1]);
+			if (this->is(BODY_ANIMAL) && (!cnext || cnext->b || cnext->type == cellType::water && !this->is(BODY_WATER_ANIMAL)))
+			{
+				this->arrive();
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	void body::animalAction()
+	{
+		// check at the beginning before move
+		if (this->animalStopMovingIfObstruction()) return;
+
+		if (this->animalMoveCounter > 0)
+		{
+			this->animalMoveCounter -= 1;
+
+			// find a new target
+			if (this->animalMoveCounter < 1)
+			{
+				this->stamina[0] = gl::rand(1, 4); // actual logic: this is random between 1 and 3
+				int r = gl::rand(0, 4);
+				switch (r)
+				{
+				case 0:
+					dir[0] = -1;
+					dir[1] = 0;
+					break;
+				case 1:
+					dir[0] = 1;
+					dir[1] = 0;
+					break;
+				case 2:
+					dir[0] = 0;
+					dir[1] = -1;
+					break;
+				case 3:
+					dir[0] = 0;
+					dir[1] = 1;
+					break;
+				}
+			}
+		}
+		else if (this->dir[0] != 0 || this->dir[1] != 0)
+		{
+			this->x += this->dir[0];
+			this->y += this->dir[1];
+			gl::updateSprite(this->sprite, this->x + 0.15f, this->y + 0.15f);
+
+			this->stamina[0] -= 1;
+
+			if (this->stamina[0] < 1)
+			{
+				this->arrive();
+				return;
+			}
+		}
+
+		// check at the end after move
+		this->animalStopMovingIfObstruction();
 	}
 
 	void body::action()
 	{
+		if (this->is(BODY_ANIMAL))
+		{
+			this->animalAction();
+			return;
+		}
+
 		// always remove stamina
 		if (this->is(BODY_ROAM) && this->stamina[0] > 0)
 			this->stamina[0] -= 1;
@@ -273,11 +363,12 @@ namespace ph
 		// move
 		if (this->dir[0] != 0 || this->dir[1] != 0)
 		{
+
 			if (this->is(BODY_RETURN))
 			{
-				cell* c = map.at(this->x + this->dir[0], this->y + this->dir[1]);
+				cell* cnext = map.at(this->x + this->dir[0], this->y + this->dir[1]);
 				// actual logic: path interrupted, remove
-				if (c->b && !c->b->is(BUILDING_WALKABLE))
+				if (cnext->b && !cnext->b->is(BUILDING_WALKABLE))
 				{
 					this->arrive();
 					return;
@@ -286,7 +377,7 @@ namespace ph
 
 			this->x += this->dir[0];
 			this->y += this->dir[1];
-			gl::updateSprite(this->sprite, this->x, this->y);
+			gl::updateSprite(this->sprite, this->x + 0.15f, this->y + 0.15f);
 		}
 
 		// effect
@@ -296,15 +387,14 @@ namespace ph
 			map.getBorder(this->x - 2, this->y - 2, 5, 5, (CELLIT)ph::effect, this);
 		}
 		
-		// direction
 		if (this->is(BODY_ROAM) && this->stamina[0] > 0)
 		{
-			vector2 directions[] = { {LONG_MAX,LONG_MAX },{LONG_MAX,LONG_MAX },{LONG_MAX,LONG_MAX },{LONG_MAX,LONG_MAX } };
+			vector2 directions[] = { {NOPOS,NOPOS },{NOPOS,NOPOS },{NOPOS,NOPOS },{NOPOS,NOPOS } };
 			map.getBorderNoCorners(this->x - 1, this->y - 1, 3, 3, (CELLIT)getRoad, directions);
 			uint roadCount = 0;
 			for (uint i = 0; i < 4; i++)
 			{
-				if (directions[i].x != LONG_MAX)
+				if (directions[i].x != NOPOS)
 					roadCount += 1;
 			}
 
@@ -314,7 +404,7 @@ namespace ph
 				gl::shuffleArray((byte*)directions, 4, 8);
 				for (uint i = 0; i < 4; i++)
 				{
-					if (directions[i].x != LONG_MAX)
+					if (directions[i].x != NOPOS)
 					{
 						this->dir[0] = directions[i].x - this->x;
 						this->dir[1] = directions[i].y - this->y;
@@ -328,7 +418,7 @@ namespace ph
 				int prev[] = { this->x - this->dir[0], this->y - this->dir[1] };
 				for (uint i = 0; i < 4; i++)
 				{
-					if (directions[i].x != LONG_MAX && directions[i].x != prev[0] && directions[i].y != prev[1])
+					if (directions[i].x != NOPOS && directions[i].x != prev[0] && directions[i].y != prev[1])
 					{
 						this->dir[0] = directions[i].x - this->x;
 						this->dir[1] = directions[i].y - this->y;
@@ -343,7 +433,7 @@ namespace ph
 				gl::shuffleArray((byte*)directions, 4, 8);
 				for (uint i = 0; i < 4; i++)
 				{
-					if (directions[i].x != LONG_MAX && directions[i].x != prev[0] && directions[i].y != prev[1])
+					if (directions[i].x != NOPOS && directions[i].x != prev[0] && directions[i].y != prev[1])
 					{
 						this->dir[0] = directions[i].x - this->x;
 						this->dir[1] = directions[i].y - this->y;
@@ -356,7 +446,7 @@ namespace ph
 			{
 				for (uint i = 0; i < 4; i++)
 				{
-					if (directions[i].x != LONG_MAX)
+					if (directions[i].x != NOPOS)
 					{
 						this->dir[0] = directions[i].x - this->x;
 						this->dir[1] = directions[i].y - this->y;
@@ -390,7 +480,7 @@ namespace ph
 			this->pathIt = pathlen -= 1;
 			this->initDir();
 		}
-		else if (this->targetb[0] != LONG_MAX && this->x == this->target[0] && this->y == this->target[1])
+		else if (this->targetb[0] != NOPOS && this->x == this->target[0] && this->y == this->target[1])
 		{
 			this->arrive();
 		}
@@ -400,11 +490,11 @@ namespace ph
 			this->pathIt -= 1;
 			this->initDir();
 		}
-		else if (this->checkpoint[0] != LONG_MAX && this->x == this->checkpoint[0] && this->y == this->checkpoint[1])
+		else if (this->checkpoint[0] != NOPOS && this->x == this->checkpoint[0] && this->y == this->checkpoint[1])
 		{
 			this->initDir();
 		}
-		else if(this->dir[0] == 0 && this->dir[1] == 0)
+		else if(!this->is(BODY_ANIMAL) && this->dir[0] == 0 && this->dir[1] == 0)
 		{
 			this->initDir();
 		}
