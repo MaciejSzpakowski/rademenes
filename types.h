@@ -8,6 +8,7 @@ typedef void(__stdcall* KEYDOWNPROC)(int key);
 
 #define massert(cond,msg) gl::_assert(cond, __FUNCTION__## " " ## msg)
 
+#define HUNTER_ATTACK_POWER 40
 #define MAX_ANIMAL_SPAWN_COUNTER 20
 #define NOPOS LONG_MAX
 #define MAX_ANIMAL_COUNT 7 // actual value, animals per spawn point
@@ -31,6 +32,9 @@ typedef void(__stdcall* KEYDOWNPROC)(int key);
 #define BODY_ANIMAL 0x10
 #define BODY_MOVING 0x20
 #define BODY_WATER_ANIMAL 0x40
+#define BODY_GAME 0x80
+#define BODY_GAME_BEING_COLLECTED 0x100
+#define BODY_DEAD 0x200
 #define BUILDING_WALKABLE 0x2
 #define BUILDING_HASDOOR 0x4
 #define BUILDING_WORKPLACE 0x8
@@ -38,9 +42,37 @@ typedef void(__stdcall* KEYDOWNPROC)(int key);
 #define BUILDING_COLLAPSABLE 0x20
 #define BUILDING_WATER_ANIMAL_SPAWNER 0x40
 #define REMOVE_FLAG(flag) this->flags ^= (flag);
+#define HUNTER_SEARCH 0x2
+#define HUNTER_PURSUE 0x4
+#define HUNTER_ATTACK 0x8
+#define HUNTER_COLLECT 0x10
+#define HUNTER_RETURN 0x20
+#define ANIMAL_CHILLIN 0x1
+#define ANIMAL_WALK 0x2
+#define ANIMAL_RUN_AWAY 0x4
+#define ANIMAL_DEAD 0x8
+#define ANIMAL_ATTACKING 0x10
 
 namespace ph
 {
+	struct vec2i
+	{
+		union
+		{
+			int x, cur;
+		};
+
+		union
+		{
+			int y, max;
+		};
+
+		void set(int a, int b);
+		void add(vec2i* v);
+		bool equals(vec2i* v);
+		void zero();
+	};
+
 	enum class editorBuildType : int
 	{
 		empty, water, rock, gold, sand, tree, reed, meadow, field, entrance
@@ -72,7 +104,7 @@ namespace ph
 
 	enum class resourceType : int
 	{
-		meat
+		game
 	};
 
 	struct stream;
@@ -92,5 +124,6 @@ namespace ph
 	/// <summary>
 	/// returns number of checkpoints
 	/// </summary>
-	int getPathRoad(int* start, int* end, int path[][2]);
+	int getPathRoad(vec2i* start, vec2i* end, vec2i* path);
+	bool isNopos(vec2i* v);
 }

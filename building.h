@@ -6,17 +6,23 @@ namespace ph
 	{
 		ulong id;
 		ulong flags;
-		int x, y, w, h;
+		union
+		{
+			struct { int x, y; };
+			vec2i pos;
+		};
+		union
+		{
+			struct { int w, h; };
+			vec2i size;
+		};
 		buildingType type;
-		int occupants, maxOccupants, immigrants, recruiters, workers, maxWorkers;
-		int recruiterCounter, workerCounter;
-		int employementCounter;
-		int door[2];
-		int water[2];
-		int fire[2];
-		int collapse[2];
+		vec2i occupants, workers, water, fire, collapse;
+		int immigrants, recruiters;
+		int recruiterCounter, workerCounter, employementCounter;
+		vec2i door;
 		int houseLevel;
-		int resources[MAX_RESOURCE_TYPES][2];
+		vec2i resources[MAX_RESOURCE_TYPES];
 		bodyType walkerType;
 		bodyType animalType;
 

@@ -12,11 +12,39 @@
 
 namespace ph
 {
+	void vec2i::set(int _x, int _y)
+	{
+		this->x = _x;
+		this->y = _y;
+	}
+
+	void vec2i::add(vec2i* v)
+	{
+		this->x += v->x;
+		this->y += v->y;
+	}
+
+	bool vec2i::equals(vec2i* v)
+	{
+		return this->x == v->x && this->y == v->y;
+	}
+
+	void vec2i::zero()
+	{
+		this->x = 0;
+		this->y = 0;
+	}
+
 	void game::init()
 	{
 		tickLength = 0.25f;
 		map.init();
 		builder::init();
+	}
+
+	bool isNopos(vec2i* v)
+	{
+		return v->x == NOPOS;
 	}
 
 	void game::run()
@@ -43,9 +71,9 @@ namespace ph
 		if (hover && hover->b)
 		{
 			building* b = hover->b;
-			sprintf(it, "door %d %d empcnt %d occ %d reccnt %d rec %d wrkcnt %d wrk %d wtr %d fir %d col %d",
-				b->door[0], b->door[1], b->employementCounter, b->occupants, b->recruiterCounter,
-				b->recruiters, b->workerCounter, b->workers, b->water[0], b->fire[0], b->collapse[0]);
+			sprintf(it, "door %d %d empcnt %d occ %d reccnt %d rec %d wrkcnt %d wrk %d wtr %d fir %d col %d res %d",
+				b->door.x, b->door.y, b->employementCounter, b->occupants, b->recruiterCounter,
+				b->recruiters, b->workerCounter, b->workers, b->water.cur, b->fire.cur, b->collapse.cur, b->resources[0].cur);
 		}
 		else
 		{

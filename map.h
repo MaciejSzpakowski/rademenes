@@ -20,7 +20,6 @@ namespace ph
 		int employees, employeed, unemployed;
 		building buildings[MAX_BUILDINGS];
 		building* entrance;
-		building* huntingSpot[10];
 		building* fishingSpot[10];
 		body bodies[MAX_BODIES];
 		cell grid[50][50];
@@ -31,6 +30,7 @@ namespace ph
 
 		void init();
 		cell* at(int x, int y);
+		cell* at(vec2i* pos);
 		void put(building* b, int x, int y);
 		void action();
 		void getArea(int x, int y, int w, int h, CELLIT it, void* data);

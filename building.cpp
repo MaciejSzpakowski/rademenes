@@ -36,6 +36,7 @@ namespace ph
 		{1,1},{1,1},{1,1},{1,1},{1,1},
 		{1,1},{1,1},{1,1},{1,1},{1,1},
 	};
+	int housemaxOccupantsMap[] = { 0, 5, 7, 9 };
 
 	uint initSprite(int x, int y, int w, int h, float r, float g, float b)
 	{
@@ -52,8 +53,7 @@ namespace ph
 				x == this->x - 1 && y == this->y + this->h || x == this->x + this->w && y == this->y + this->h)
 				return false;
 
-			this->door[0] = x;
-			this->door[1] = y;
+			this->door.set(x, y);
 			return true;
 		}
 
@@ -70,14 +70,14 @@ namespace ph
 		if (c->b && c->b->is(BUILDING_HASDOOR))
 		{
 			// this building has no door
-			if (c->b->door[0] == LONG_MAX)
+			if (isNopos(&c->b->door))
 			{
 				c->b->updateDoor();
 			}
 			// check if door got obstructed
 			else
 			{
-				cell* c2 = map.at(c->b->door[0], c->b->door[1]);
+				cell* c2 = map.at(&c->b->door);
 				if(c2->b) c->b->updateDoor();
 			}
 		}
@@ -87,8 +87,7 @@ namespace ph
 
 	void building::updateDoor()
 	{
-		this->door[0] = LONG_MAX;
-		this->door[1] = LONG_MAX;
+		this->door.set(NOPOS, NOPOS);
 
 		map.getBorder(this->x - 1, this->y - 1, this->w + 2, this->h + 2, (CELLIT)initDoor, this);
 	}
@@ -169,44 +168,36 @@ namespace ph
 		this->flags = FLAG_LIVE;
 		this->x = x;
 		this->y = y;
-		this->door[0] = LONG_MAX;
-		this->door[1] = LONG_MAX;
-		this->occupants = 0;
+		this->door.set(NOPOS, NOPOS);
+		this->occupants.zero();
 		this->recruiters = 0;
-		this->workers = 0;
+		this->workers.set(0, 1);
 		this->recruiterCounter = 0;
 		this->workerCounter = MAX_WORKERCOUNTER;
 		this->employementCounter = 0;
-		this->maxWorkers = 1;
-		this->fire[0] = 1000;
-		this->fire[1] = 1000;
-		this->collapse[0] = 1000;
-		this->collapse[1] = 1000;
+		this->fire.set(1000, 1000);
+		this->collapse.set(1000, 1000);
 		this->w = buildingSize[(int)type][0];
 		this->h = buildingSize[(int)type][1];
 		for (uint i = 0; i < MAX_RESOURCE_TYPES; i++)
-		{
-			this->resources[i][0] = 0;
-			this->resources[i][1] = 20000;
-		}
+			this->resources[i].set(0, 20000);
 
 		switch (type)
 		{
 		case buildingType::house:
-			this->maxOccupants = 5;
+			this->occupants.max = 5;
 			this->immigrants = 0;
-			this->water[0] = 0;
-			this->water[1] = 500;
+			this->water.set(0, 500);
 			this->houseLevel = 1;			
 			this->flags |= BUILDING_FLAMABLE;
 			break;
 		case buildingType::waterSupply:
-			this->maxOccupants = 5;
+			this->occupants.max = 5;
 			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE;
 			this->walkerType = bodyType::waterCarrier;
 			break;
 		case buildingType::fireHouse:
-			this->maxOccupants = 6;
+			this->occupants.max = 6;
 			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE;
 			this->walkerType = bodyType::fire;
 			break;
@@ -215,29 +206,30 @@ namespace ph
 			map.entrance = this;
 			break;
 		case buildingType::fire:
-			this->fire[0] = 200;
-			this->fire[1] = 200;
+			this->fire.set(200, 200);
 			break;
 		case buildingType::granary:
-			this->maxOccupants = 12;
+			this->occupants.max = 12;
 			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE | BUILDING_FLAMABLE | BUILDING_COLLAPSABLE;
 			break;
 		case buildingType::huntingLodge:
-			this->maxOccupants = 6;
+			this->occupants.max = 6;
+			this->workers.max = 3;
 			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE | BUILDING_FLAMABLE;
+			this->walkerType = bodyType::hunter;
 			break;
 		case buildingType::bazaar:
-			this->maxOccupants = 5;
+			this->occupants.max = 5;
 			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE | BUILDING_FLAMABLE;
 			break;
 		case buildingType::architect:
-			this->maxOccupants = 5;
+			this->occupants.max = 5;
 			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE;
 			this->walkerType = bodyType::architect;
 			break;
 		case buildingType::animalSpawn:
 			this->workerCounter = MAX_ANIMAL_SPAWN_COUNTER;
-			this->maxOccupants = MAX_ANIMAL_COUNT;
+			this->occupants.max = MAX_ANIMAL_COUNT;
 			break;
 		}
 
@@ -250,27 +242,28 @@ namespace ph
 
 	void building::action()
 	{
+		// TODO actual logic, if house has no road access then it disappears (no matter if it's occupied or not)
 		// immigrant for house
 		if (type == buildingType::house && map.entrance && //map.vacancies > map.immigrants && 
-			this->immigrants < this->maxOccupants - this->occupants)
+			this->immigrants < this->occupants.max - this->occupants.cur)
 		{
-			body* b = map.addBody();
+			body* b = new immigrant();
 			if (b)
 				b->init(bodyType::immigrant, map.entrance->x, map.entrance->y, this);
 		}
 		// recruiter
-		if (this->is(BUILDING_WORKPLACE) && this->door[0] != LONG_MAX && 
+		if (this->is(BUILDING_WORKPLACE) && this->door.x != LONG_MAX && 
 			this->employementCounter < EMPLOYEECOUNTER_RECRUITER_THRESHOLD &&
 			this->recruiters < MAX_RECRUITERS)
 		{
 			if (this->recruiterCounter < 1)
 			{
-				body* b = map.addBody();
+				body* b = new recruiter();
 				if (b)
 				{
 					this->recruiterCounter = MAX_RECRUITERCOUNTER;
 					this->recruiters += 1;
-					b->init(bodyType::recruiter, this->door[0], this->door[1], this);
+					b->init(bodyType::recruiter, this->door.x, this->door.y, this);
 				}
 			}
 			else
@@ -279,22 +272,39 @@ namespace ph
 			}
 		}
 		// walker aka service delivery
-		if (this->is(BUILDING_WORKPLACE) && this->door[0] != LONG_MAX && 
-			this->workers < this->maxWorkers && this->occupants > 1)
+		if (this->is(BUILDING_WORKPLACE) && this->door.x != LONG_MAX && 
+			this->workers.cur < this->workers.max && this->occupants.cur > 1)
 		{
 			if (this->workerCounter < 1)
 			{
-				body* b = map.addBody();
+				body* b = nullptr;
+
+				switch (this->type)
+				{
+				case buildingType::waterSupply:
+					b = new waterCarrier();
+					break;
+				case buildingType::architect:
+					b = new architect();
+					break;
+				case buildingType::fireHouse:
+					b = new fireMarshal();
+					break;
+				case buildingType::huntingLodge:
+					b = new hunter();
+					break;
+				}
+
 				if (b)
 				{
-					this->workerCounter = MAX_WORKERCOUNTER;
-					this->workers += 1;
-					b->init(this->walkerType, this->door[0], this->door[1], this);
+					this->workerCounter = this->type == buildingType::huntingLodge ? 2 : MAX_WORKERCOUNTER;
+					this->workers.cur += 1;
+					b->init(this->walkerType, this->door.x, this->door.y, this);
 				}
 			}
 			else
 			{
-				float empRatio = (float)this->occupants / (float)this->maxOccupants;
+				float empRatio = (float)this->occupants.cur / (float)this->occupants.max;
 				if (empRatio == 1.0f) workerCounter -= 4;
 				else if (empRatio > 0.5f) workerCounter -= 2;
 				else if (empRatio > 0.25f) workerCounter -= 1;
@@ -302,17 +312,17 @@ namespace ph
 		}
 
 		// employementCounter and rebalance employees
-		if (this->is(BUILDING_WORKPLACE) && this->occupants > 0)
+		if (this->is(BUILDING_WORKPLACE) && this->occupants.cur > 0)
 		{
 			// more employees than citizens (because house destroyed or people left)
 			if (map.employeed + map.unemployed > map.employees)
 			{
 				int removeEmployees = map.employeed + map.unemployed - map.employees;
-				if (removeEmployees > this->occupants) removeEmployees = this->occupants;
+				if (removeEmployees > this->occupants.cur) removeEmployees = this->occupants.cur;
 				map.employeed -= removeEmployees;
-				this->occupants -= removeEmployees;
+				this->occupants.cur -= removeEmployees;
 
-				if (this->occupants == 0) this->workerCounter = MAX_WORKERCOUNTER;
+				if (this->occupants.cur == 0) this->workerCounter = MAX_WORKERCOUNTER;
 			}
 
 			if (this->employementCounter > 0)
@@ -323,16 +333,16 @@ namespace ph
 		}
 
 		// house consume resources and evolve
-		if (this->type == buildingType::house && this->occupants > 0)
+		if (this->type == buildingType::house && this->occupants.cur > 0)
 		{
 			this->evolveHouse();
-			this->water[0] -= this->occupants;
-			if (this->water[0] < 0) this->water[0] = 0;
+			this->water.cur -= this->occupants.cur;
+			if (this->water.cur < 0) this->water.cur = 0;
 			// rebalance citizes
-			if (this->occupants > this->maxOccupants)
+			if (this->occupants.cur > this->occupants.max)
 			{
-				int removePeople = this->occupants - this->maxOccupants;
-				this->occupants -= removePeople;
+				int removePeople = this->occupants.cur - this->occupants.max;
+				this->occupants.cur -= removePeople;
 				map.citizens -= removePeople;
 				map.employees -= removePeople;
 			}
@@ -341,8 +351,8 @@ namespace ph
 		// fire
 		if (this->is(BUILDING_FLAMABLE))
 		{
-			this->fire[0] -= 1;
-			if (this->fire[0] < 0)
+			this->fire.cur -= 1;
+			if (this->fire.cur < 0)
 			{
 				this->burnDown();
 				return;
@@ -350,8 +360,8 @@ namespace ph
 		}
 		else if (this->is(buildingType::fire))
 		{
-			this->fire[0] -= 1;
-			if (this->fire[0] < 0)
+			this->fire.cur -= 1;
+			if (this->fire.cur < 0)
 			{
 				int x = this->x;
 				int y = this->y;
@@ -364,15 +374,15 @@ namespace ph
 		// collapse
 		if (this->is(BUILDING_COLLAPSABLE))
 		{
-			this->collapse[0] -= 1;
-			if (this->collapse[0] < 0)
+			this->collapse.cur -= 1;
+			if (this->collapse.cur < 0)
 			{
 				this->buildingCollapsed();
 				return;
 			}
 		}
 
-		if (this->is(buildingType::animalSpawn) && this->occupants < this->maxOccupants)
+		if (this->is(buildingType::animalSpawn) && this->occupants.cur < this->occupants.max)
 		{
 			this->workerCounter -= 1;
 			if (this->workerCounter < 1)
@@ -389,9 +399,9 @@ namespace ph
 					if (!c || c->b || c->type == cellType::water && !this->is(BUILDING_WATER_ANIMAL_SPAWNER))
 						continue;
 
-					body* animal = map.addBody();
-					animal->init(this->animalType, this->x + rx, this->y + ry, this);
-					this->occupants += 1;
+					body* b = new animal();
+					b->init(this->animalType, this->x + rx, this->y + ry, this);
+					this->occupants.cur += 1;
 					break;
 				}
 			}
@@ -428,15 +438,15 @@ namespace ph
 		switch (this->type)
 		{
 		case buildingType::house:
-			map.citizens -= this->occupants;
-			map.employees -= this->occupants;
+			map.citizens -= this->occupants.cur;
+			map.employees -= this->occupants.cur;
 			break;
 		}
 
 		if (this->is(BUILDING_WORKPLACE))
 		{
-			map.employeed -= this->occupants;
-			map.unemployed += this->occupants;
+			map.employeed -= this->occupants.cur;
+			map.unemployed += this->occupants.cur;
 		}
 
 		this->flags = 0;
@@ -448,21 +458,21 @@ namespace ph
 
 		if (!this->is(FLAG_LIVE)) return;
 
-		it->writeUint64(this->id);
+		/*it->writeUint64(this->id);
 		it->writeInt32(this->x);
 		it->writeInt32(this->y);
 		it->writeInt32(this->w);
 		it->writeInt32(this->h);
 		it->writeInt32((int)this->type);
 		it->writeInt32(this->occupants);
-		it->writeInt32(this->maxOccupants);
+		it->writeInt32(this->occupants.max);
 		it->writeInt32(this->immigrants);
 		it->writeInt32(this->recruiters);
 		it->writeInt32(this->workers);
 		it->writeInt32(this->recruiterCounter);
 		it->writeInt32(this->workerCounter);
-		it->writeInt32(this->door[0]);
-		it->writeInt32(this->door[1]);
+		it->writeInt32(this->door.x);
+		it->writeInt32(this->door.y);*/
 		//it->writeByte(this->walkable);
 		//it->writeByte(this->hasDoor);
 		//it->writeByte(this->workplace);
@@ -473,21 +483,21 @@ namespace ph
 		//this->live = s->readByte();
 		//if (!this->live) return;
 
-		this->id = s->readUint64();
+		/*this->id = s->readUint64();
 		this->x = s->readInt32();
 		this->y = s->readInt32();
 		this->w = s->readInt32();
 		this->h = s->readInt32();
 		this->type = (buildingType)s->readInt32();
 		this->occupants = s->readInt32();
-		this->maxOccupants = s->readInt32();
+		this->occupants.max = s->readInt32();
 		this->immigrants = s->readInt32();
 		this->recruiters = s->readInt32();
 		this->workers = s->readInt32();
 		this->recruiterCounter = s->readInt32();
 		this->workerCounter = s->readInt32();
-		this->door[0] = s->readInt32();
-		this->door[1] = s->readInt32();
+		this->door.x = s->readInt32();
+		this->door.y = s->readInt32();*/
 		//this->walkable = s->readByte();
 		//this->hasDoor = s->readByte();
 		//this->workplace = s->readByte();
@@ -497,8 +507,8 @@ namespace ph
 
 	void building::recruit()
 	{
-		// logic note
-		// in pharaoh, the moment recruiter gets employee access it fills all positions (unless not enough employees)
+		// actual logic
+		// the moment recruiter gets employee access it fills all positions (unless not enough employees)
 		// so building will gain and loose all employees at once (not incrementally)
 		this->employementCounter += EMPLOYEMENTCOUNTER_INCREMENT;
 		if (this->employementCounter > MAX_EMPLOYEMENTCOUNTER) this->employementCounter = MAX_EMPLOYEMENTCOUNTER;
@@ -510,38 +520,44 @@ namespace ph
 		massert(this->is(BUILDING_WORKPLACE));
 
 		// hire
-		if (this->employementCounter > 0 && this->occupants < this->maxOccupants)
+		if (this->employementCounter > 0 && this->occupants.cur < this->occupants.max)
 		{
-			int needed = this->maxOccupants - this->occupants;
+			int needed = this->occupants.max - this->occupants.cur;
 			int newEmployees = needed < map.unemployed ? needed : map.unemployed;
-			this->occupants += newEmployees;
+			this->occupants.cur += newEmployees;
 			map.unemployed -= newEmployees;
 			map.employeed += newEmployees;
 		}
 		// quit
-		else if (this->employementCounter == 0 && this->occupants > 0)
+		else if (this->employementCounter < 1 && this->occupants.cur > 0)
 		{
 			this->workerCounter = MAX_WORKERCOUNTER;
-			map.unemployed += this->occupants;
-			map.employeed -= this->occupants;
-			this->occupants = 0;
+			map.unemployed += this->occupants.cur;
+			map.employeed -= this->occupants.cur;
+			this->occupants.cur = 0;
 		}
 	}
 
 	void building::evolveHouse()
 	{
-		massert(this->type == buildingType::house && this->occupants > 0, "bad house");
+		massert(this->type == buildingType::house && this->occupants.cur > 0, "bad house");
 		int oldLevel = this->houseLevel;
-		int maxOccupantsMap[] = { 0, 5, 7, 9 };
-
+		
+		// only one level at a time
 		switch (this->houseLevel)
 		{
 		case 1:
-			if (this->water[0] > 0)
+			if (this->water.cur > 0)
 				this->houseLevel += 1;
 			break;
 		case 2:
-			if (this->water[0] == 0)
+			if (this->water.cur < 1)
+				this->houseLevel -= 1;
+			else if (this->resources[(int)resourceType::game].cur > 0)
+				this->houseLevel += 1;
+			break;
+		case 3:
+			if (this->resources[(int)resourceType::game].cur < 1)
 				this->houseLevel -= 1;
 			break;
 		}
@@ -549,9 +565,9 @@ namespace ph
 		if (this->houseLevel != oldLevel)
 		{
 			this->initGraphics();
-			this->maxOccupants = maxOccupantsMap[this->houseLevel];
-			this->water[1] = this->maxOccupants * 100;
-			if (this->water[0] > this->water[1]) this->water[0] = this->water[1];
+			this->occupants.max = housemaxOccupantsMap[this->houseLevel];
+			this->water.max = this->occupants.max * 100;
+			if (this->water.cur > this->water.max) this->water.cur = this->water.max;
 		}
 	}
 

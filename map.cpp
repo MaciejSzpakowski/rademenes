@@ -24,6 +24,11 @@ namespace ph
 		return &grid[x][y];
 	}
 
+	cell* smap::at(vec2i* pos)
+	{
+		return smap::at(pos->x, pos->y);
+	}
+
 	void smap::getArea(int x, int y, int w, int h, CELLIT it, void* data)
 	{
 		// int because it can be negative (out of bounds check will catch it)
@@ -114,7 +119,7 @@ namespace ph
 
 	bool roadAddedCallback(cell* c, int x, int y, void* _)
 	{
-		if (c && c->b && c->b->is(BUILDING_HASDOOR) && c->b->door[0] == LONG_MAX && !c->b->is(buildingType::house))
+		if (c && c->b && c->b->is(BUILDING_HASDOOR) && c->b->door.x == LONG_MAX && !c->b->is(buildingType::house))
 		{
 			c->b->updateDoor();
 		}
@@ -136,9 +141,9 @@ namespace ph
 
 	bool roadRemovedCallback(cell* c, int x, int y, void* _)
 	{
-		if (c && c->b && c->b->is(BUILDING_HASDOOR) && c->b->door[0] != LONG_MAX && !c->b->is(buildingType::house))
+		if (c && c->b && c->b->is(BUILDING_HASDOOR) && c->b->door.x != LONG_MAX && !c->b->is(buildingType::house))
 		{
-			cell* currentDoor = map.at(c->b->door[0], c->b->door[1]);
+			cell* currentDoor = map.at(c->b->door.x, c->b->door.y);
 			if (!currentDoor->road)
 				c->b->updateDoor();
 		}
@@ -283,9 +288,9 @@ namespace ph
 		{
 			body* b = bodies + i;
 
-			if (!b->is(FLAG_LIVE) || b->dir[0] == 0 && b->dir[1] == 0) continue;
+			if (!b->is(FLAG_LIVE) || b->dir.x == 0 && b->dir.y == 0) continue;
 
-			gl::updateSprite(b->sprite, b->x + b->dir[0] * tickProgress + 0.15f, b->y + b->dir[1] * tickProgress + 0.15f);
+			gl::updateSprite(b->sprite, b->x + b->dir.x * tickProgress + 0.15f, b->y + b->dir.y * tickProgress + 0.15f);
 		}
 	}
 

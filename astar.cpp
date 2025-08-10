@@ -12,7 +12,7 @@ namespace ph
 {
 	struct searchCell
 	{
-		int pos[2]; 
+		int x, y;
 		int fromStart;
 		int fromEnd;
 		int prev; // index, not pos
@@ -24,13 +24,13 @@ namespace ph
 	searchCell graph[1000];
 	searchCell heads[1000];
 
-	int getPathRoad(int* start, int* end, int path[][2])
+	int getPathRoad(vec2i* start, vec2i* end, vec2i* path)
 	{
 		// short circuit
-		if (start[0] == end[0] && start[1] == end[1])
+		if (start->x == end->x && start->y == end->y)
 		{
-			path[0][0] = end[0];
-			path[0][1] = end[1];
+			path[0].x = end->x;
+			path[0].y = end->y;
 			return 1;
 		}
 
@@ -38,9 +38,9 @@ namespace ph
 		graphLen = 0;
 
 		heads[0].fromStart = 0;
-		heads[0].fromEnd = abs(start[0] - end[0]) + abs(start[1] - end[1]);
-		heads[0].pos[0] = start[0];
-		heads[0].pos[1] = start[1];
+		heads[0].fromEnd = abs(start->x - end->x) + abs(start->y - end->y);
+		heads[0].x = start->x;
+		heads[0].y = start->y;
 		headsLen = 1;
 
 		while (true)
@@ -61,56 +61,56 @@ namespace ph
 			}
 
 			// add to graph
-			cell* current = map.at(shortestHead->pos[0], shortestHead->pos[1]);
+			cell* current = map.at(shortestHead->x, shortestHead->y);
 			current->visited = id;
 			memcpy(graph + graphLen, shortestHead, sizeof(searchCell));
 			graphLen += 1;
 			// check for end
-			if (shortestHead->pos[0] == end[0] && shortestHead->pos[1] == end[1])
+			if (shortestHead->x == end->x && shortestHead->y == end->y)
 				break;
 
 			// get neighbors
-			cell* left = map.at(shortestHead->pos[0] - 1, shortestHead->pos[1]);
+			cell* left = map.at(shortestHead->x - 1, shortestHead->y);
 			if (left && left->road && left->visited != id)
 			{
 				searchCell* h = heads + headsLen;
 				h->fromStart = shortestHead->fromStart + 1;
-				h->fromEnd = abs(shortestHead->pos[0] - 1 - end[0]) + abs(shortestHead->pos[1] - end[1]);
-				h->pos[0] = shortestHead->pos[0] - 1;
-				h->pos[1] = shortestHead->pos[1];
+				h->fromEnd = abs(shortestHead->x - 1 - end->x) + abs(shortestHead->y - end->y);
+				h->x = shortestHead->x - 1;
+				h->y = shortestHead->y;
 				h->prev = graphLen - 1;
 				headsLen += 1;
 			}
-			cell* top = map.at(shortestHead->pos[0], shortestHead->pos[1] + 1);
+			cell* top = map.at(shortestHead->x, shortestHead->y + 1);
 			if (top && top->road && top->visited != id)
 			{
 				searchCell* h = heads + headsLen;
 				h->fromStart = shortestHead->fromStart + 1;
-				h->fromEnd = abs(shortestHead->pos[0] - end[0]) + abs(shortestHead->pos[1] - end[1] + 1);
-				h->pos[0] = shortestHead->pos[0];
-				h->pos[1] = shortestHead->pos[1] + 1;
+				h->fromEnd = abs(shortestHead->x - end->x) + abs(shortestHead->y - end->y + 1);
+				h->x = shortestHead->x;
+				h->y = shortestHead->y + 1;
 				h->prev = graphLen - 1;
 				headsLen += 1;
 			}
-			cell* right = map.at(shortestHead->pos[0] + 1, shortestHead->pos[1]);
+			cell* right = map.at(shortestHead->x + 1, shortestHead->y);
 			if (right && right->road && right->visited != id)
 			{
 				searchCell* h = heads + headsLen;
 				h->fromStart = shortestHead->fromStart + 1;
-				h->fromEnd = abs(shortestHead->pos[0] + 1 - end[0]) + abs(shortestHead->pos[1] - end[1]);
-				h->pos[0] = shortestHead->pos[0] + 1;
-				h->pos[1] = shortestHead->pos[1];
+				h->fromEnd = abs(shortestHead->x + 1 - end->x) + abs(shortestHead->y - end->y);
+				h->x = shortestHead->x + 1;
+				h->y = shortestHead->y;
 				h->prev = graphLen - 1;
 				headsLen += 1;
 			}
-			cell* bottom = map.at(shortestHead->pos[0], shortestHead->pos[1] - 1);
+			cell* bottom = map.at(shortestHead->x, shortestHead->y - 1);
 			if (bottom && bottom->road && bottom->visited != id)
 			{
 				searchCell* h = heads + headsLen;
 				h->fromStart = shortestHead->fromStart + 1;
-				h->fromEnd = abs(shortestHead->pos[0] + 1 - end[0]) + abs(shortestHead->pos[1] - end[1]);
-				h->pos[0] = shortestHead->pos[0];
-				h->pos[1] = shortestHead->pos[1] - 1;
+				h->fromEnd = abs(shortestHead->x + 1 - end->x) + abs(shortestHead->y - end->y);
+				h->x = shortestHead->x;
+				h->y = shortestHead->y - 1;
 				h->prev = graphLen - 1;
 				headsLen += 1;
 			}
@@ -127,8 +127,8 @@ namespace ph
 		searchCell* it = graph + graphLen - 1;
 		searchCell* prev = nullptr;
 		searchCell* prevprev = nullptr;
-		path[0][0] = end[0];
-		path[0][1] = end[1];
+		path[0].x = end->x;
+		path[0].y = end->y;
 		uint it2 = 1;
 		while (it != graph)
 		{
@@ -136,10 +136,10 @@ namespace ph
 			prev = it;
 			it = graph + it->prev;
 			// record only turns
-			if (prevprev && prevprev->pos[0] != it->pos[0] && prevprev->pos[1] != it->pos[1])
+			if (prevprev && prevprev->x != it->x && prevprev->y != it->y)
 			{
-				path[it2][0] = prev->pos[0];
-				path[it2][1] = prev->pos[1];
+				path[it2].x = prev->x;
+				path[it2].y = prev->y;
 				it2 += 1;
 			}
 			massert(it2 < MAX_PATH, "takes too long");
