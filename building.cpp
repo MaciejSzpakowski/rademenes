@@ -179,8 +179,17 @@ namespace ph
 		this->collapse.set(1000, 1000);
 		this->w = buildingSize[(int)type][0];
 		this->h = buildingSize[(int)type][1];
-		for (uint i = 0; i < MAX_RESOURCE_TYPES; i++)
-			this->resources[i].set(0, 20000);
+
+		if (type == buildingType::house)
+		{
+			for (uint i = 0; i < MAX_RESOURCE_TYPES; i++)
+				this->resources[i].set(0, 20000);
+		}
+		else
+		{
+			for (uint i = 0; i < MAX_RESOURCE_TYPES; i++)
+				this->resources[i].set(0, 500);
+		}
 
 		switch (type)
 		{
@@ -213,9 +222,10 @@ namespace ph
 			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE | BUILDING_FLAMABLE | BUILDING_COLLAPSABLE;
 			break;
 		case buildingType::huntingLodge:
+			this->raw = goods::game;
 			this->occupants.max = 6;
 			this->workers.max = 3;
-			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE | BUILDING_FLAMABLE;
+			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE | BUILDING_FLAMABLE | BUILDING_RESOURCE_GATHER;
 			this->walkerType = bodyType::hunter;
 			break;
 		case buildingType::bazaar:
@@ -275,7 +285,8 @@ namespace ph
 		if (this->is(BUILDING_WORKPLACE) && this->door.x != LONG_MAX && 
 			this->workers.cur < this->workers.max && this->occupants.cur > 1)
 		{
-			if (this->workerCounter < 1)
+			if (this->workerCounter < 1 && (!this->is(BUILDING_RESOURCE_GATHER) || 
+				this->resources[(int)this->raw].cur + this->workers.cur * 100 < this->resources[(int)this->raw].max))
 			{
 				body* b = nullptr;
 
@@ -538,6 +549,18 @@ namespace ph
 		}
 	}
 
+	bool countFoodTypes(building* house)
+	{
+		int res = 0;
+
+		for (uint i = (int)goods::game; i <= (int)goods::fish; i++)
+		{
+			if (house->resources[i].cur > 0) res += 1;
+		}
+
+		return res;
+	}
+
 	void building::evolveHouse()
 	{
 		massert(this->type == buildingType::house && this->occupants.cur > 0, "bad house");
@@ -553,11 +576,11 @@ namespace ph
 		case 2:
 			if (this->water.cur < 1)
 				this->houseLevel -= 1;
-			else if (this->resources[(int)resourceType::game].cur > 0)
+			else if (countFoodTypes(this) > 0)
 				this->houseLevel += 1;
 			break;
 		case 3:
-			if (this->resources[(int)resourceType::game].cur < 1)
+			if (countFoodTypes(this) == 0)
 				this->houseLevel -= 1;
 			break;
 		}

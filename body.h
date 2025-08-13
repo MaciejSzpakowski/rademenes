@@ -20,8 +20,8 @@ namespace ph
 		vec2i dir;
 		vec2i target;
 		vec2i stamina;
-		int animalMoveCounter;
 		int hp;
+		int waitCounter;
 
 		building* targetb;
 		body* targeta;
@@ -48,7 +48,8 @@ namespace ph
 		/// <summary>
 		/// temporarily used instead of initdir
 		/// </summary>
-		void damage(int hit);
+		void damage(int hit, body* source);
+		void runAwayFrom(body* b);
 	};
 
 	struct immigrant : public body
@@ -107,6 +108,6 @@ namespace ph
 		virtual void init(bodyType type, int x, int y, building* target);
 		virtual void action();
 		void stop();
-		bool stopMovingIfObstruction();
+		bool stopMovingIfObstruction();		
 	};
 }

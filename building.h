@@ -17,14 +17,17 @@ namespace ph
 			vec2i size;
 		};
 		buildingType type;
-		vec2i occupants, workers, water, fire, collapse;
+		vec2i occupants, workers, water, fire, collapse, religion[MAX_GODS], health, entertainment[MAX_ENTERTAINMENT];
 		int immigrants, recruiters;
 		int recruiterCounter, workerCounter, employementCounter;
 		vec2i door;
 		int houseLevel;
+		goods raw;
+		goods finished;
 		vec2i resources[MAX_RESOURCE_TYPES];
 		bodyType walkerType;
 		bodyType animalType;
+
 
 		uint sprite;
 		

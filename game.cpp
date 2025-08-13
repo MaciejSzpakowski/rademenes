@@ -18,10 +18,22 @@ namespace ph
 		this->y = _y;
 	}
 
+	void vec2i::set(vec2i* v)
+	{
+		this->x = v->x;
+		this->y = v->y;
+	}
+
 	void vec2i::add(vec2i* v)
 	{
 		this->x += v->x;
 		this->y += v->y;
+	}
+
+	void vec2i::sub(vec2i* v)
+	{
+		this->x -= v->x;
+		this->y -= v->y;
 	}
 
 	bool vec2i::equals(vec2i* v)
@@ -40,6 +52,14 @@ namespace ph
 		tickLength = 0.25f;
 		map.init();
 		builder::init();
+	}
+
+	void vec2i::norm()
+	{
+		if (this->x < 0) this->x = -1;
+		else if (this->x > 0) this->x = 1;
+		if (this->y < 0) this->y = -1;
+		else if (this->y > 0) this->y = 1;
 	}
 
 	bool isNopos(vec2i* v)

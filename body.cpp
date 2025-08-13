@@ -87,6 +87,7 @@ namespace ph
 		this->target.set(NOPOS, NOPOS);
 		this->targetbId = 0;
 		this->pathIt = -1;
+		this->waitCounter = 0;
 
 		if (this->targetb)
 		{
@@ -172,7 +173,7 @@ namespace ph
 
 	void body::action()	{	}
 
-	void body::damage(int hit)
+	void body::damage(int hit, body* source)
 	{
 		this->hp -= hit;
 
@@ -182,9 +183,14 @@ namespace ph
 			{
 				float col[] = { 1,0,0 };
 				gl::updateSprite(this->sprite, this->x, this->y, 0.3f, col, 0.5f, 0.5f);
+				this->dir.zero();
 				this->state = ANIMAL_DEAD;
 			}
 			this->flags |= BODY_DEAD;
+		}
+		else if(this->is(BODY_GAME))
+		{
+			this->runAwayFrom(source);
 		}
 	}
 
@@ -522,6 +528,9 @@ namespace ph
 		// find new target
 		if (this->state == HUNTER_SEARCH)
 		{
+			// TODO
+			// actual logic: hunter always picks prey that is the closest
+			// sometimes it will change target if prey runs away too far
 			for (uint i = 0; i < MAX_BODIES; i++)
 			{
 				body* b = map.bodies + i;
@@ -561,13 +570,18 @@ namespace ph
 				return;
 			}
 
-			if (abs(this->targeta->x - this->x) + abs(this->targeta->y - this->y) < 3)
+			if (this->waitCounter > 0)
 			{
+				this->waitCounter -= 1;
+			}
+			else if (abs(this->targeta->x - this->x) + abs(this->targeta->y - this->y) < 3)
+			{
+				this->waitCounter = HUNTER_SHOT_AND_WAIT;
 				this->dir.zero();
 				// SHOOT, can hit only if it's not moving
-				if (!(this->targeta->state & (ANIMAL_RUN_AWAY | ANIMAL_RUN_AWAY)))
+				if (!(this->targeta->state == ANIMAL_WALK))
 				{
-					this->targeta->damage(HUNTER_ATTACK_POWER);
+					this->targeta->damage(HUNTER_ATTACK_POWER, this);
 				}
 			}
 			else
@@ -616,7 +630,7 @@ namespace ph
 		if (this->targetb->is(FLAG_LIVE) && this->targetb->id == this->targetbId)
 		{
 			this->targetb->workers.cur -= 1;
-			this->targetb->resources[(int)resourceType::game].cur += 100;
+			this->targetb->resources[(int)goods::game].cur += 100;
 		}
 		this->remove();
 	}
@@ -626,18 +640,18 @@ namespace ph
 	void animal::init(bodyType type, int x, int y, building* target)
 	{
 		body::init(type, x, y, target);
-		this->hp = 10;
+		this->hp = 100;
 		this->flags |= BODY_ANIMAL | BODY_GAME;
-		this->animalMoveCounter = gl::rand(MAX_ANIMAL_MOVE_COUNTER, MAX_ANIMAL_MOVE_COUNTER + 10); // actual logic: wait time between moves is random
+		this->waitCounter = gl::rand(MAX_ANIMAL_MOVE_COUNTER, MAX_ANIMAL_MOVE_COUNTER + 10); // actual logic: wait time between moves is random
 		this->state = ANIMAL_CHILLIN;
 	}
 
 	void animal::stop()
 	{
-		this->animalMoveCounter = MAX_ANIMAL_MOVE_COUNTER;
+		this->flags -= BODY_RUN_AWAY;
+		this->waitCounter = MAX_ANIMAL_MOVE_COUNTER;
 		this->state = ANIMAL_CHILLIN;
-		this->dir.x = 0;
-		this->dir.y = 0;
+		this->dir.zero();
 	}
 
 	bool animal::stopMovingIfObstruction()
@@ -645,7 +659,7 @@ namespace ph
 		massert(this->dir.x != 0 || this->dir.y != 0, "dir is 0");
 		massert(this->is(BODY_ANIMAL), "this is not animal");
 		cell* cnext = map.at(this->x + this->dir.x, this->y + this->dir.y);
-		if (!cnext || cnext->b || cnext->type == cellType::water && !this->is(BODY_WATER_ANIMAL))
+		if (!cnext || cnext->b && !cnext->b->is(BUILDING_WALKABLE) || cnext->type == cellType::water && !this->is(BODY_WATER_ANIMAL))
 		{
 			this->stop();
 			return true;
@@ -654,21 +668,48 @@ namespace ph
 		return false;
 	}
 
+	void body::runAwayFrom(body* b)
+	{
+		if (this->is(BODY_GAME))
+		{
+			this->stamina.cur = 4;
+			this->state = ANIMAL_WALK;
+			this->flags |= BODY_RUN_AWAY;
+
+			// TODO: better target selection
+			// check for obstacles
+			// currently, simply run away in opposite dir
+			if (!this->pos.equals(&b->pos))
+			{
+				this->dir.set(&this->pos);
+				this->dir.sub(&b->pos);
+				this->dir.norm();
+			}
+			else
+			{
+				this->dir.set(1, 0);
+			}					
+		}
+	}
+
 	void animal::action()
 	{
 		massert(this->state, "bad state");
+
+		if (this->is(BODY_DEAD)) return;
+
 		// check at the beginning before move
-		if (this->state & (ANIMAL_RUN_AWAY | ANIMAL_WALK))
+		if (this->state == ANIMAL_WALK)
 		{
 			if (this->stopMovingIfObstruction()) return;
 		}
 
-		if (this->state & ANIMAL_CHILLIN)
+		if (this->state == ANIMAL_CHILLIN)
 		{
-			this->animalMoveCounter -= 1;
+			this->waitCounter -= 1;
 
 			// find a new target
-			if (this->animalMoveCounter < 1)
+			if (this->waitCounter < 1)
 			{
 				this->state = ANIMAL_WALK;
 				this->stamina.cur = gl::rand(1, 4); // actual logic: this is random between 1 and 3
@@ -676,29 +717,24 @@ namespace ph
 				switch (r)
 				{
 				case 0:
-					dir.x = -1;
-					dir.y = 0;
+					this->dir.set(-1, 0);
 					break;
 				case 1:
-					dir.x = 1;
-					dir.y = 0;
+					this->dir.set(1, 0);
 					break;
 				case 2:
-					dir.x = 0;
-					dir.y = -1;
+					this->dir.set(0, -1);
 					break;
 				case 3:
-					dir.x = 0;
-					dir.y = 1;
+					this->dir.set(0, 1);
 					break;
 				}
 			}
 		}
-		else if (this->state & (ANIMAL_WALK | ANIMAL_RUN_AWAY))
+		else if (this->state == ANIMAL_WALK)
 		{
 			massert(this->dir.x != 0 || this->dir.y != 0, "dir is 0");
-			this->x += this->dir.x;
-			this->y += this->dir.y;
+			this->pos.add(&this->dir);
 			gl::updateSprite(this->sprite, this->x + 0.15f, this->y + 0.15f);
 
 			this->stamina.cur -= 1;
@@ -711,7 +747,7 @@ namespace ph
 		}
 
 		// check at the end after move
-		if (this->state & (ANIMAL_RUN_AWAY | ANIMAL_WALK))
+		if (this->state == ANIMAL_WALK)
 		{
 			if (this->stopMovingIfObstruction()) return;
 		}
