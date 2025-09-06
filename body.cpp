@@ -752,4 +752,51 @@ namespace ph
 			if (this->stopMovingIfObstruction()) return;
 		}
 	}
+
+	immigrant::immigrant() {}
+
+	void delivery::action()
+	{
+		// validate building
+		// remove if building is gone
+		if (this->targetb)
+		{
+			if (!this->targetb->is(FLAG_LIVE) || this->targetb->id != this->targetbId)
+				this->remove();
+		}
+
+		this->x += this->dir.x;
+		this->y += this->dir.y;
+		gl::updateSprite(this->sprite, this->x + 0.15f, this->y + 0.15f);
+
+		this->initDir();
+
+		if (this->x == this->target.x && this->y == this->target.y)
+		{
+			this->arrive();
+		}
+	}
+
+	void delivery::init(bodyType type, int x, int y, building* target)
+	{
+		body::init(type, x, y, target);
+		this->target.x = target->x;
+		this->target.y = target->y;
+		this->targetb->immigrants += 1;
+	}
+
+	void delivery::arrive()
+	{
+		if (this->targetb->is(FLAG_LIVE) && this->targetbId == this->targetb->id &&
+			this->targetb->occupants.cur < this->targetb->occupants.max)
+		{
+			map.citizens += 1;
+			map.employees += 1;
+			map.unemployed += 1;
+			this->targetb->occupants.cur += 1;
+			this->targetb->immigrants -= 1;
+		}
+
+		this->remove();
+	}
 }

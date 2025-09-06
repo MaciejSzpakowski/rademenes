@@ -171,6 +171,7 @@ namespace ph
 		this->door.set(NOPOS, NOPOS);
 		this->occupants.zero();
 		this->recruiters = 0;
+		this->delivery = 0;
 		this->workers.set(0, 1);
 		this->recruiterCounter = 0;
 		this->workerCounter = MAX_WORKERCOUNTER;

@@ -22,6 +22,8 @@ namespace ph
 		vec2i stamina;
 		int hp;
 		int waitCounter;
+		int resource;
+		goods resourceType;
 
 		building* targetb;
 		body* targeta;
@@ -108,6 +110,13 @@ namespace ph
 		virtual void init(bodyType type, int x, int y, building* target);
 		virtual void action();
 		void stop();
-		bool stopMovingIfObstruction();		
+		bool stopMovingIfObstruction();
+	};
+
+	struct delivery : public body
+	{
+		virtual void init(bodyType type, int x, int y, building* target);
+		virtual void action();
+		virtual void arrive();
 	};
 }

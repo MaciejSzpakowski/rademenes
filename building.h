@@ -19,7 +19,7 @@ namespace ph
 		buildingType type;
 		vec2i occupants, workers, water, fire, collapse, religion[MAX_GODS], health, entertainment[MAX_ENTERTAINMENT];
 		int immigrants, recruiters;
-		int recruiterCounter, workerCounter, employementCounter;
+		int recruiterCounter, workerCounter, employementCounter, delivery;
 		vec2i door;
 		int houseLevel;
 		goods raw;

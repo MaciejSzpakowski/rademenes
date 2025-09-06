@@ -110,7 +110,7 @@ namespace ph
 	enum class bodyType : int
 	{
 		immigrant, recruiter, waterCarrier, fire, ostrich, 
-		architect, delivery, sklepikarz, hunter
+		architect, delivery, sklepikarz, hunter, delivery
 	};
 
 	enum class goods : int
