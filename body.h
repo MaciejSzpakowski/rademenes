@@ -115,6 +115,7 @@ namespace ph
 
 	struct delivery : public body
 	{
+		delivery();
 		virtual void init(bodyType type, int x, int y, building* target);
 		virtual void action();
 		virtual void arrive();

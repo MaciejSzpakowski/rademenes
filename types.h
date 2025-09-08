@@ -57,6 +57,8 @@ typedef void(__stdcall* KEYDOWNPROC)(int key);
 #define ANIMAL_WALK 0x2
 #define ANIMAL_DEAD 0x4
 #define ANIMAL_ATTACKING 0x8
+#define GOODS_CONSUME_SLOT 0
+#define GOODS_PRODUCE_SLOT 1
 
 namespace ph
 {
@@ -104,13 +106,20 @@ namespace ph
 	{
 		none, house, road, waterSupply, statueLarge, 
 		entry, exit, fireHouse, fire, granary, huntingLodge, 
-		bazaar, architect, rubble, animalSpawn
+		bazaar, architect, rubble, animalSpawn, storage
 	};
 
 	enum class bodyType : int
 	{
 		immigrant, recruiter, waterCarrier, fire, ostrich, 
-		architect, delivery, sklepikarz, hunter, delivery
+		architect, delivery, sklepikarz, hunter
+	};
+
+	enum class resourceOrder : int
+	{
+		accept, accept2, accept4, accept8,
+		get, get2, get4, get8,
+		none, empty
 	};
 
 	enum class goods : int
@@ -122,7 +131,8 @@ namespace ph
 		// raw
 		clay, barley, flax, gems, reeds, wood, copper, gold, straw,
 		// stone
-		plainstone, limestone, granite, sandstone
+		plainstone, limestone, granite, sandstone,
+		none
 	};
 
 	struct stream;

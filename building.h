@@ -2,6 +2,15 @@
 
 namespace ph
 {
+	struct resourceProp
+	{
+		resourceOrder order;
+		goods type;
+		int max;
+		int qty;
+		int incoming;
+	};
+
 	struct building
 	{
 		ulong id;
@@ -22,12 +31,12 @@ namespace ph
 		int recruiterCounter, workerCounter, employementCounter, delivery;
 		vec2i door;
 		int houseLevel;
-		goods raw;
-		goods finished;
-		vec2i resources[MAX_RESOURCE_TYPES];
+		goods consumes;
+		goods produces;
+		int houseResources[MAX_RESOURCE_TYPES];
+		resourceProp storage[8];
 		bodyType walkerType;
 		bodyType animalType;
-
 
 		uint sprite;
 		

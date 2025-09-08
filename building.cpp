@@ -180,16 +180,16 @@ namespace ph
 		this->collapse.set(1000, 1000);
 		this->w = buildingSize[(int)type][0];
 		this->h = buildingSize[(int)type][1];
+		this->produces = goods::none;
+		this->consumes = goods::none;
+
+		for (uint i = 0; i < MAX_RESOURCE_TYPES; i++)
+			this->storage[i] = { resourceOrder::accept, goods::none, 400, 0, 0 };
 
 		if (type == buildingType::house)
 		{
 			for (uint i = 0; i < MAX_RESOURCE_TYPES; i++)
-				this->resources[i].set(0, 20000);
-		}
-		else
-		{
-			for (uint i = 0; i < MAX_RESOURCE_TYPES; i++)
-				this->resources[i].set(0, 500);
+				this->houseResources[i] = 0;
 		}
 
 		switch (type)
@@ -223,7 +223,7 @@ namespace ph
 			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE | BUILDING_FLAMABLE | BUILDING_COLLAPSABLE;
 			break;
 		case buildingType::huntingLodge:
-			this->raw = goods::game;
+			this->produces = goods::game;
 			this->occupants.max = 6;
 			this->workers.max = 3;
 			this->flags |= BUILDING_HASDOOR | BUILDING_WORKPLACE | BUILDING_FLAMABLE | BUILDING_RESOURCE_GATHER;
@@ -286,8 +286,9 @@ namespace ph
 		if (this->is(BUILDING_WORKPLACE) && this->door.x != LONG_MAX && 
 			this->workers.cur < this->workers.max && this->occupants.cur > 1)
 		{
+			// spawn worker
 			if (this->workerCounter < 1 && (!this->is(BUILDING_RESOURCE_GATHER) || 
-				this->resources[(int)this->raw].cur + this->workers.cur * 100 < this->resources[(int)this->raw].max))
+				this->storage[GOODS_PRODUCE_SLOT].qty + this->workers.cur * 100 < this->storage[GOODS_PRODUCE_SLOT].max))
 			{
 				body* b = nullptr;
 
@@ -314,6 +315,7 @@ namespace ph
 					b->init(this->walkerType, this->door.x, this->door.y, this);
 				}
 			}
+			// dec worker counter
 			else
 			{
 				float empRatio = (float)this->occupants.cur / (float)this->occupants.max;
@@ -358,6 +360,16 @@ namespace ph
 				map.citizens -= removePeople;
 				map.employees -= removePeople;
 			}
+		}
+
+		// empty producers
+		if (this->produces != goods::none && this->storage[GOODS_PRODUCE_SLOT].qty > 0 && this->delivery == 0)
+		{
+			this->delivery += 1;
+			body* b = map.addBody();
+			b->init(bodyType::delivery, this->door.x, this->door.y, nullptr);
+			b->resource = 100;
+			b->resourceType = this->produces;
 		}
 
 		// fire
@@ -556,7 +568,7 @@ namespace ph
 
 		for (uint i = (int)goods::game; i <= (int)goods::fish; i++)
 		{
-			if (house->resources[i].cur > 0) res += 1;
+			if (house->houseResources[i] > 0) res += 1;
 		}
 
 		return res;

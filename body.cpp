@@ -148,10 +148,7 @@ namespace ph
 		else
 		{
 			if (this->targeta)
-			{
-				this->target.x = this->targeta->x;
-				this->target.y = this->targeta->y;
-			}
+				this->target.set(&this->targeta->pos);
 
 			if (this->target.x > this->x)
 				this->dir.x = 1;
@@ -630,7 +627,7 @@ namespace ph
 		if (this->targetb->is(FLAG_LIVE) && this->targetb->id == this->targetbId)
 		{
 			this->targetb->workers.cur -= 1;
-			this->targetb->resources[(int)goods::game].cur += 100;
+			this->targetb->storage[GOODS_PRODUCE_SLOT].qty += 100;
 		}
 		this->remove();
 	}
@@ -753,10 +750,59 @@ namespace ph
 		}
 	}
 
-	immigrant::immigrant() {}
+	delivery::delivery() {}
 
 	void delivery::action()
 	{
+		if (!this->targetb)
+		{
+			// FIND TARGET
+			// TODO, should be nearest by default
+			for (uint i = 0; i < MAX_BUILDINGS; i++)
+			{
+				building* bi = map.buildings + i;
+				int ri = (int)this->resourceType;
+				// consumer like potter or school
+				if (bi->consumes == this->resourceType && 
+					bi->storage[GOODS_CONSUME_SLOT].qty + bi->storage[GOODS_CONSUME_SLOT].incoming < bi->storage[GOODS_CONSUME_SLOT].max)
+				{
+					this->targetb = bi;
+					bi->storage[GOODS_CONSUME_SLOT].incoming += this->resource;
+				}
+				else if (bi->is(buildingType::granary) || bi->is(buildingType::storage))
+				{
+					for (uint i = 0; i < 8; i++)
+					{
+						// empty slot
+						if (bi->storage[i].qty == 0 && bi->storage[i].incoming == 0)
+						{
+							bi->storage[i].incoming += this->resource;
+							bi->storage[i].type = this->resourceType;
+							this->targetb = bi;
+							this->targetbId = bi->id;
+							this->target.set(&bi->door);
+						}
+						// slot of the same type with space left
+						else if (bi->storage[i].incoming + bi->storage[i].qty < bi->storage[i].max && bi->storage[i].type == this->resourceType)
+						{
+							bi->storage[i].incoming += this->resource;
+							this->targetb = bi;
+							this->targetbId = bi->id;
+							this->target.set(&bi->door);
+						}
+					}
+				}
+
+				// found new target, stop looking
+				if (this->targetb)
+					break;
+			}
+		}
+
+		// no new target, dont do anything else
+		if (!this->targetb)
+			return;
+
 		// validate building
 		// remove if building is gone
 		if (this->targetb)
@@ -787,16 +833,44 @@ namespace ph
 
 	void delivery::arrive()
 	{
-		if (this->targetb->is(FLAG_LIVE) && this->targetbId == this->targetb->id &&
-			this->targetb->occupants.cur < this->targetb->occupants.max)
+		building* b = this->targetb;
+
+		if (b->is(FLAG_LIVE) && this->targetbId == b->id)
 		{
-			map.citizens += 1;
-			map.employees += 1;
-			map.unemployed += 1;
-			this->targetb->occupants.cur += 1;
-			this->targetb->immigrants -= 1;
+			if (b->is(buildingType::granary) || b->is(buildingType::storage))
+			{
+				// first try to find slot with existing goods but not full
+				for (uint i = 0; i < 8; i++)
+				{
+					if (b->storage[i].qty < b->storage[i].max && b->storage[i].type == this->resourceType)
+					{
+						int amountTransferred = __min(b->storage[i].max - b->storage[i].qty, this->resource);
+						b->storage[i].qty += amountTransferred;
+						b->storage[i].incoming -= amountTransferred;
+						this->resource -= amountTransferred;
+						break;
+					}
+				}
+				// then try to find empty slot
+				for (uint i = 0; i < 8; i++)
+				{
+					if (b->storage[i].qty == 0)
+					{
+						massert(this->resource <= b->storage[i].max, "delivery carries more than 400 resource");
+
+						b->storage[i].qty += this->resource;
+						b->storage[i].incoming -= this->resource;
+						this->resource = 0;
+						b->storage[i].type = this->resourceType;
+						break;
+					}
+				}
+			}
 		}
 
-		this->remove();
+		if (this->resource == 0)
+		{
+			this->remove();
+		}
 	}
 }

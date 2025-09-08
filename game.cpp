@@ -93,7 +93,7 @@ namespace ph
 			building* b = hover->b;
 			sprintf(it, "door %d %d empcnt %d occ %d reccnt %d rec %d wrkcnt %d wrk %d wtr %d fir %d col %d res %d",
 				b->door.x, b->door.y, b->employementCounter, b->occupants, b->recruiterCounter,
-				b->recruiters, b->workerCounter, b->workers, b->water.cur, b->fire.cur, b->collapse.cur, b->resources[0].cur);
+				b->recruiters, b->workerCounter, b->workers, b->water.cur, b->fire.cur, b->collapse.cur, b->storage[0].qty);
 		}
 		else
 		{
